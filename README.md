@@ -23,10 +23,10 @@
   <img alt="Tests" src="https://img.shields.io/badge/Geometrie--Tests-10%20gr%C3%BCn-7dd99b?style=flat-square&labelColor=131318">
 </p>
 
-Zwei kleine Vorführungen zum Ausprobieren, live unter **[k8s.celox.io](https://k8s.celox.io)**:
+Zwei kleine Vorführungen zum Ausprobieren, live unter **[k8s.celox.io](https://k8s.celox.io)**. Die Startseite erklärt alles ohne Vorwissen; von dort geht es weiter:
 
-1. **Kubernetes zum Anfassen:** Man sieht, wie ein Programm auf mehrere Kopien verteilt wird, wie man es per Knopfdruck vergrößert und wie es sich selbst repariert, wenn man eine Kopie „abschießt“.
-2. **JSON-Astrolabium:** Datenstrukturen als drehbare Landkarte, in der man mit Maus oder Finger herumfliegt.
+1. **Kubernetes ausprobieren** (`/cluster.html`): Man sieht, wie ein Programm auf mehrere Kopien verteilt wird, wie man es per Knopfdruck vergrößert und wie es sich selbst repariert, wenn man eine Kopie „abschießt“.
+2. **JSON-Astrolabium** (`/tree.html`): Datenstrukturen als drehbare Landkarte, in der man mit Maus oder Finger herumfliegt.
 
 ![Kubernetes zum Anfassen](docs/screenshot.png)
 
@@ -62,7 +62,7 @@ Drei Dinge kann man ausprobieren:
 | **+ 1 / − 1** | Es laufen mehr oder weniger Kopien | **Skalieren**: Kubernetes startet neue Kopien oder räumt welche weg, ohne dass die Seite ausfällt. |
 | **Kill** | Eine Kopie wird gelöscht | **Selbstheilung**: Nach wenigen Sekunden steht eine neue Kopie an ihrer Stelle, weil Kubernetes merkt, dass eine fehlt. |
 
-Die Tabelle „Pods (live)“ zeigt dabei in Echtzeit, welche Kopien gerade laufen, starten oder verschwinden.
+Die Liste „Was gerade läuft“ zeigt in Echtzeit, welche Kopien laufen, starten oder verschwinden. Daneben schreibt „Was Kubernetes tut“ in Klartext mit, was passiert, etwa: „Du hast Kopie cfq2m gelöscht. Kubernetes merkt, dass eine fehlt, und startet Ersatz.“ – „Kopie xgmd2 ist bereit und nimmt Anfragen an.“
 
 ## JSON-Astrolabium: was man sieht
 
@@ -141,8 +141,22 @@ deploy/nginx/       vHost + Sicherheits-Kopfzeilen für den VPS
 k8s/manifests.yaml  Namespace, Deployments, Services, Rechte
 k8s/api.py          API (nur Python-Standardbibliothek)
 k8s/nginx.conf      nginx im Cluster: Seiten + Weiterleitung auf /api/
-k8s/web/            Seiten: index.html + app.js (Cluster), tree.html + tree.js (Astrolabium), hyper.js (Geometrie)
+k8s/web/            Seiten: index.html + landing.js (Start), cluster.html + app.js (Ausprobieren),
+                    tree.html + tree.js (Astrolabium), hyper.js (Geometrie), site.css (gemeinsame Gestalt),
+                    favicon.svg/-32.png, apple-touch-icon.png, og.jpg (Vorschaubild für soziale Netzwerke)
+tools/              Vorlagen, aus denen Vorschaubild und Favicon-PNGs gerendert werden
 tests/              Geometrie-Tests (node --test)
+```
+
+## Vorschaubild und Favicon neu erzeugen
+
+Das Vorschaubild (`og.jpg`, 1200 × 630) zeichnet eine echte Poincaré-Scheibe mit derselben Geometrie wie das Astrolabium. Gerendert wird in Chrome, nicht mit ImageMagick (das kann Verläufe und Webschriften nicht sauber):
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1   # im Repo-Ordner
+# dann mit Playwright/Chrome:
+#   tools/og.html     -> Element #og als JPEG  -> k8s/web/og.jpg
+#   tools/icons.html  -> #c32 (transparent), #c180 -> favicon-32.png, apple-touch-icon.png
 ```
 
 ## Lizenz

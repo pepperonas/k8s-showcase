@@ -27,3 +27,11 @@ Kubernetes-Showcase für den Laptop (k3d, Namespace `demo`, Port 8088). Ziel: m�
 - nginx-vHost + Kopfzeilen vendort in `deploy/nginx/`; Wildcard-DNS/-Zertifikat, kein certbot. `/api/scale|kill` nur POST, 20/min je Adresse (burst 10), sonst 429; `/` nur GET/HEAD; noindex.
 - Ausrollen: `./deploy.sh` (Inhalt), `./deploy.sh nginx` (+ vHost), `./deploy.sh setup` (einmalig Binaries). Kein Zustand, der gesichert werden müsste (Redis-Zähler ist flüchtig).
 - Entfernen: `ssh root@69.62.121.168 'k3d cluster delete showcase; rm /etc/nginx/sites-enabled/k8s.celox.io && nginx -t && systemctl reload nginx'`.
+
+## Startseite, Gestalt, Bilder (2026-11-13)
+
+- `/` ist die erklaerende Startseite (`index.html` + `landing.js`, kleine anfassbare Scheibe), die Cluster-Oberflaeche liegt unter `/cluster.html`, das Astrolabium unter `/tree.html`. Alle drei teilen die Farben Messing/Nachtblau (`site.css`; tree.html hat dieselben Tokens inline).
+- Texte sind fuer Laien geschrieben (Restaurant-Vergleich, Glossar, Klartext-Protokoll in `app.js`). Neue Texte im selben Ton: kurze Saetze, du-Form, Fachwort nur mit Erklaerung.
+- `app.js`: `event.currentTarget` nach einem `await` ist null – Element vorher in eine Variable legen.
+- `og.jpg` + Favicon-PNGs werden aus `tools/og.html` / `tools/icons.html` in Chrome gerendert (README „Vorschaubild und Favicon neu erzeugen“). Fuer transparente PNGs braucht die Vorlage `background:transparent`, sonst kommen RGB-Dateien mit weissen Ecken heraus. Das Apple-Icon ist absichtlich deckend.
+- Bilder liegen als Binaerdaten in der ConfigMap `web-html` (Limit 1 MB gesamt, derzeit ~150 kB).

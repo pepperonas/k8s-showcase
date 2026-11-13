@@ -1,0 +1,32 @@
+/* Gemeinsame Gestalt fuer Startseite und Cluster-Seite: Messing auf Nachtblau,
+   dieselben Toene wie das JSON-Astrolabium. */
+:root{
+  --plane:#181522; --disk:#0e1a2c; --card:#211d2c; --line:#3a3446;
+  --brass:#c9a45c; --brass-dim:#7d6a45; --on-brass:#1a1408;
+  --ink:#ece6d8; --ink-mut:#b5ae9f;
+  --ok:#8fd3a8; --warn:#e8c47c; --bad:#f0839a; --ref:#f0839a;
+  --pod1:#8ab4f8; --pod2:#8fd3a8; --pod3:#e8c47c; --pod4:#f0839a; --pod5:#c6a0f6; --pod6:#7fd4d8;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:light){:root{
+  --plane:#efeae2; --disk:#fbf8f1; --card:#fffdf8; --line:#d9d0c2;
+  --brass:#8a6a2a; --brass-dim:#b9a576; --on-brass:#fffdf8;
+  --ink:#1f1b26; --ink-mut:#5a5466;
+  --ok:#2d7a4a; --warn:#8a5a00; --bad:#c2335a; --ref:#c2335a;
+  --pod1:#2f5bd0; --pod2:#2d7a4a; --pod3:#8a5a00; --pod4:#c2335a; --pod5:#6b3fb5; --pod6:#1d7680;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--plane);color:var(--ink);font:16px/1.55 var(--sans)}
+a{color:var(--brass)}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 20px;border-radius:999px;border:1px solid var(--brass);
+  background:var(--brass);color:var(--on-brass);font:600 .95rem var(--sans);text-decoration:none;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--brass)}
+.btn:hover{filter:brightness(1.08)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+.foot{max-width:1040px;margin:56px auto 0;padding:20px 20px 32px;border-top:1px solid var(--line);color:var(--ink-mut);font-size:.88rem;
+  display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+.foot a{color:var(--ink-mut)}

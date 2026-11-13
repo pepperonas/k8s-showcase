@@ -83,7 +83,7 @@
   function buildModel(json) {
     const nodes = [], byPath = new Map();
     const make = (value, key, path, parent) => {
-      if (nodes.length >= MAX_NODES) throw new Error(`Mehr als ${MAX_NODES} Knoten. Bitte ein kleineres JSON wählen.`);
+      if (nodes.length >= MAX_NODES) throw new Error(`Mehr als ${MAX_NODES} Einträge. Bitte kleinere Daten wählen.`);
       const n = { id: nodes.length, key, path, parent, raw: value, type: typeOf(value), children: [], refsIn: [], collapsed: false };
       n.depth = parent ? parent.depth + 1 : 0;
       nodes.push(n); byPath.set(path, n);
@@ -609,7 +609,7 @@
   });
 
   // ---------- Panel ----------
-  const typeName = { object: 'Objekt', array: 'Liste', string: 'Text', number: 'Zahl', literal: 'Wert', ref: 'Verweis' };
+  const typeName = { object: 'Gruppe', array: 'Liste', string: 'Text', number: 'Zahl', literal: 'Ja/Nein/leer', ref: 'Verweis' };
   function select(n) {
     const had = !!selected;
     selected = n; renderPanel();
@@ -666,21 +666,21 @@
       else refs.append(el('span', { class: 'broken', role: 'note' }, `${n.ref} existiert nicht`));
     }
     if (n.refsIn.length) {
-      refs.append(el('p', null, n.refsIn.length === 1 ? 'Verwiesen von 1 Stelle' : `Verwiesen von ${n.refsIn.length} Stellen`));
+      refs.append(el('p', null, n.refsIn.length === 1 ? 'Eine Stelle verweist hierher' : `${n.refsIn.length} Stellen verweisen hierher`));
       n.refsIn.forEach((r) => refs.append(el('button', { on: () => focusNode(r) }, readable(r.path))));
     }
     const acts = el('div', { class: 'acts' });
-    if (n.parent) acts.append(el('button', { on: () => focusNode(n.parent) }, 'Zum Elternknoten'));
+    if (n.parent) acts.append(el('button', { on: () => focusNode(n.parent) }, 'Eine Ebene hoch'));
     if (n.children.length) acts.append(el('button', { on: () => { n.collapsed = !n.collapsed; relayout(); renderPanel(); } }, n.collapsed ? 'Aufklappen' : 'Zuklappen'));
-    acts.append(el('button', { on: () => focusNode(n, { zoom: Math.max(zoom, 2) }) }, 'Heranholen'));
+    acts.append(el('button', { on: () => focusNode(n, { zoom: Math.max(zoom, 2) }) }, 'Näher heran'));
     panel.replaceChildren(
       el('h2', null, nameOf(n)),
-      el('div', { class: 'type' }, `${typeName[n.type]}${n.children.length ? `, ${n.children.length} Einträge` : ''}, Tiefe ${n.depth}`),
+      el('div', { class: 'type' }, `${typeName[n.type]}${n.children.length ? `, ${n.children.length} ${n.children.length === 1 ? 'Eintrag' : 'Einträge'}` : ''}, Ebene ${n.depth}`),
       crumbs, body, refs, acts);
   }
   function renderStats() {
     const m = model;
-    $('#stats').textContent = `${m.nodes.length} Knoten, ${m.refs} Verweise${m.broken ? `, ${m.broken} davon ins Leere` : ''}`;
+    $('#stats').textContent = `${m.nodes.length} Einträge, ${m.refs} Verweise${m.broken ? `, ${m.broken} davon ins Leere` : ''}`;
   }
 
   // ---------- Datensaetze ----------
@@ -695,7 +695,7 @@
     };
     for (const [id, s] of Object.entries(SETS)) chip(id, s.label, () => loadData(s.data, id));
     chip('cluster', clusterState === 'loading' ? 'Cluster lädt …' : clusterState === 'error' ? 'Cluster nicht erreichbar' : 'Cluster (live)', loadCluster, clusterState === 'error');
-    chip('eigenes', 'Eigenes JSON', openDialog);
+    chip('eigenes', 'Eigene Daten', openDialog);
   }
   async function loadCluster() {
     clusterState = 'loading'; renderSets();
@@ -736,9 +736,11 @@
   $('#bParent').onclick = () => { if (selected && selected.parent) focusNode(selected.parent); else resetView(); };
   $('#optValues').onchange = (e) => { showValues = e.target.checked; relayout(); };
   $('#optRefs').onchange = (e) => { showRefs = e.target.checked; requestDraw(); };
-  const hint = $('#hint');
-  try { if (localStorage.getItem('astrolab-hint') === 'off') hint.hidden = true; } catch (e) { /* ohne Speicher */ }
-  $('#hintClose').onclick = () => { hint.hidden = true; try { localStorage.setItem('astrolab-hint', 'off'); } catch (e) { /* egal */ } };
+  const hint = $('#hint'), hintOpen = $('#hintOpen');
+  const showHint = (on) => { hint.hidden = !on; hintOpen.hidden = on; };
+  try { if (localStorage.getItem('astrolab-hint') === 'off') showHint(false); } catch (e) { /* ohne Speicher */ }
+  $('#hintClose').onclick = () => { showHint(false); hintOpen.focus(); try { localStorage.setItem('astrolab-hint', 'off'); } catch (e) { /* egal */ } };
+  hintOpen.onclick = () => { showHint(true); try { localStorage.removeItem('astrolab-hint'); } catch (e) { /* egal */ } };
 
   window.addEventListener('resize', () => { shift = null; resize(); });
   matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', readColors);

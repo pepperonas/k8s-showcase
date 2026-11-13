@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Rendert die PNG-Fassungen des Favicons aus favicon.svg. Rendern: tools/render.sh -->
+<html><body style="margin:0;background:transparent">
+<canvas id="c32" width="32" height="32"></canvas><canvas id="c180" width="180" height="180"></canvas>
+<script>
+const img = new Image();
+img.onload = () => {
+  for (const [id, n, full] of [['c32', 32, false], ['c180', 180, true]]) {
+    const ctx = document.getElementById(id).getContext('2d');
+    if (full) { ctx.fillStyle = '#181522'; ctx.fillRect(0, 0, n, n); }   // iOS maskiert selbst: randlos und deckend
+    ctx.drawImage(img, 0, 0, n, n);
+  }
+  window.out = { '32': c32.toDataURL('image/png'), '180': c180.toDataURL('image/png') };
+  document.title = 'ready';
+};
+img.src = '../k8s/web/favicon.svg';
+</script></body></html>

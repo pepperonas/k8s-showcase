@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kubernetes ausprobieren</title>
+<meta name="description" content="Drei Kopien eines Programms, live verteilt, skaliert und repariert von Kubernetes.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#181522">
+<link rel="stylesheet" href="site.css">
+<style>
+main{max-width:1040px;margin:0 auto;padding:20px 20px 0;display:grid;gap:18px}
+.top{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between}
+.top nav{display:flex;gap:16px;font-size:.92rem}
+.top nav a{text-decoration:none}
+h1{font-size:clamp(1.6rem,4vw,2.2rem)}
+.lede{margin:6px 0 0;color:var(--ink-mut);max-width:62ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+.card h2{font-size:1.2rem;margin-bottom:4px}
+.card .what{margin:0 0 14px;color:var(--ink-mut);font-size:.95rem;max-width:56ch}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.big{font:600 2.4rem/1 var(--serif);font-variant-numeric:tabular-nums}
+.stat{display:flex;align-items:baseline;gap:10px;margin:16px 0 10px}
+.stat span:last-child{color:var(--ink-mut);font-size:.92rem}
+.hits{display:flex;gap:6px;flex-wrap:wrap;min-height:30px}
+.hit{padding:3px 10px;border-radius:999px;font:.8rem var(--mono);border:1px solid currentColor}
+.steps{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;counter-increment:s}
+.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;border:1px solid var(--brass);color:var(--brass);display:grid;place-items:center;font:600 .9rem var(--serif)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+td,th{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--ink-mut);font-weight:500;font-size:.85rem}
+td code{font:.85rem var(--mono)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.kill{background:none;border:1px solid var(--bad);color:var(--bad);border-radius:999px;padding:5px 12px;font:600 .82rem var(--sans);cursor:pointer;min-height:32px}
+.tbl{overflow-x:auto}
+#log{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:260px;overflow:auto;font-size:.92rem}
+#log li{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
+#log time{color:var(--ink-mut);font:.8rem var(--mono);padding-top:2px}
+#log .empty{display:block;color:var(--ink-mut)}
+details{margin-top:10px;color:var(--ink-mut);font-size:.9rem}
+details summary{cursor:pointer;color:var(--brass)}
+details p{margin:8px 0 0;max-width:62ch}
+.hide-sm{}
+@media (max-width:640px){.hide-sm{display:none}}
+@media (prefers-reduced-motion:no-preference){tr{transition:opacity .3s}#log li:first-child{animation:in .5s ease-out}@keyframes in{from{background:color-mix(in srgb,var(--brass) 18%,transparent)}}}
+</style></head><body>
+<main>
+<header class="top">
+  <div>
+    <h1>Kubernetes ausprobieren</h1>
+    <p class="lede">Hier läuft ein Programm in mehreren Kopien gleichzeitig. Kubernetes passt auf, dass immer genug davon da sind. Drück die Knöpfe und schau zu, was passiert.</p>
+  </div>
+  <nav><a href="./">Start</a><a href="tree.html">JSON-Astrolabium</a></nav>
+</header>
+
+<section class="card" aria-labelledby="h-how">
+  <h2 id="h-how">So probierst du es aus</h2>
+  <ol class="steps">
+    <li><span><b>Anfragen schicken:</b> Drück „20 Anfragen“. Jede farbige Marke ist eine Antwort, die Farbe zeigt, welche Kopie geantwortet hat.</span></li>
+    <li><span><b>Kopien ändern:</b> Mit „+ 1“ und „− 1“ legst du fest, wie viele Kopien laufen sollen. Kubernetes startet oder beendet sie für dich.</span></li>
+    <li><span><b>Etwas kaputtmachen:</b> Lösch unten eine Kopie. Ein paar Sekunden später steht eine neue da, ohne dass jemand eingreift.</span></li>
+  </ol>
+</section>
+
+<div class="grid2">
+<section class="card" aria-labelledby="h-lb">
+  <h2 id="h-lb">Arbeit verteilen</h2>
+  <p class="what">Alle Anfragen kommen an einer Tür an. Kubernetes verteilt sie auf die laufenden Kopien, damit keine überlastet ist.</p>
+  <div class="row"><button class="btn" id="burst">20 Anfragen</button><button class="btn ghost" id="hello">1 Anfrage</button></div>
+  <div class="stat"><span class="big" id="visits">–</span><span>Besuche insgesamt</span></div>
+  <div class="hits" id="hits" aria-label="Antwortende Kopien"></div>
+  <details><summary>Warum stimmt der Zähler, obwohl verschiedene Kopien antworten?</summary>
+    <p>Die Kopien merken sich nichts selbst. Sie schreiben den Zähler auf einen gemeinsamen Notizzettel, ein kleines Programm namens Redis. Deshalb ist es egal, welche Kopie antwortet.</p></details>
+</section>
+
+<section class="card" aria-labelledby="h-sc">
+  <h2 id="h-sc">Kopien ändern</h2>
+  <p class="what">Du sagst nur, wie viele Kopien du willst. Wie sie gestartet oder beendet werden, erledigt Kubernetes.</p>
+  <div class="stat"><span class="big" id="rep">–</span><span>Kopien gewünscht (1 bis 6)</span></div>
+  <div class="row"><button class="btn ghost" data-d="-1" aria-label="Eine Kopie weniger">− 1</button><button class="btn" data-d="1" aria-label="Eine Kopie mehr">+ 1</button></div>
+  <details><summary>Was heißt „gewünscht“?</summary>
+    <p>Kubernetes arbeitet mit einem Sollzustand: Du beschreibst, wie es sein soll, und Kubernetes vergleicht ständig mit dem, was gerade läuft. Weicht etwas ab, gleicht es aus. Daher kommt auch die Selbstreparatur.</p></details>
+</section>
+</div>
+
+<div class="grid2">
+<section class="card" aria-labelledby="h-pods">
+  <h2 id="h-pods">Was gerade läuft</h2>
+  <p class="what">Jede Zeile ist ein laufendes Programm, bei Kubernetes „Pod“ genannt. Die Liste aktualisiert sich von selbst.</p>
+  <div class="tbl"><table><thead><tr><th>Kopie</th><th>Aufgabe</th><th>Zustand</th><th class="hide-sm">Neustarts</th><th></th></tr></thead><tbody id="pods"></tbody></table></div>
+</section>
+
+<section class="card" aria-labelledby="h-log">
+  <h2 id="h-log">Was Kubernetes tut</h2>
+  <p class="what">Hier steht in Klartext, was sich im Hintergrund ändert.</p>
+  <ul id="log" aria-live="polite"><li class="empty">Noch nichts passiert. Drück einen Knopf.</li></ul>
+</section>
+</div>
+</main>
+<footer class="foot"><span>© 2026 Martin Pfeffer | <a href="https://celox.io">celox.io</a></span><a href="https://github.com/pepperonas/k8s-showcase">Quellcode auf GitHub</a></footer>
+<script src="app.js"></script>
+</body></html>

@@ -1,43 +1,152 @@
 <!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>K8s Showcase</title>
-<link rel="icon" href="data:,">
+<title>Kubernetes zum Anfassen</title>
+<meta name="description" content="Zwei Vorführungen zum Ausprobieren: wie Kubernetes Programme verteilt, vergrößert und repariert, und wie man Datenstrukturen auf einer drehbaren Karte erkundet.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#181522">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://k8s.celox.io/">
+<meta property="og:title" content="Kubernetes zum Anfassen">
+<meta property="og:description" content="Programme verteilen, vergrößern und reparieren lassen – live ausprobieren. Dazu: JSON-Daten als drehbare hyperbolische Karte.">
+<meta property="og:image" content="https://k8s.celox.io/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Eine nachtblaue Scheibe mit Messingring, auf der sich ein verzweigter Baum zum Rand hin verkleinert. Daneben der Titel Kubernetes zum Anfassen.">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kubernetes zum Anfassen">
+<meta name="twitter:description" content="Programme verteilen, vergrößern und reparieren lassen – live ausprobieren.">
+<meta name="twitter:image" content="https://k8s.celox.io/og.jpg">
+<link rel="stylesheet" href="site.css">
 <style>
-:root{--bg:#111318;--card:#1d2026;--line:#2c3038;--text:#e3e2e9;--mut:#a9acb7;--pri:#b3c5ff;--ok:#7dd99b;--warn:#ffcf70;--bad:#ff8a80}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;padding:24px 16px}
-main{max-width:980px;margin:0 auto;display:grid;gap:16px}
-h1{margin:0;font-size:1.6rem}p.sub{margin:4px 0 0;color:var(--mut)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px}
-.card h2{margin:0 0 12px;font-size:1rem;color:var(--pri);text-transform:uppercase;letter-spacing:.06em}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-button{background:var(--pri);color:#102a6b;border:0;border-radius:999px;padding:9px 16px;font-weight:600;cursor:pointer}
-button.ghost{background:transparent;color:var(--pri);border:1px solid var(--line)}
-button.kill{background:transparent;color:var(--bad);border:1px solid var(--line);padding:4px 10px;font-size:.8rem}
-.big{font-size:2.2rem;font-weight:700;font-variant-numeric:tabular-nums}
-table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
-.hits{display:flex;gap:6px;flex-wrap:wrap}.hit{padding:3px 9px;border-radius:999px;font-size:.8rem;font-family:ui-monospace,monospace}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-code{color:var(--warn)}
-@media (prefers-reduced-motion:no-preference){tr{transition:opacity .3s}}
-</style></head><body><main>
-<header><h1>Kubernetes Showcase <a href="tree.html" style="font-size:.9rem;font-weight:500;color:var(--pri);margin-left:10px">JSON-Astrolabium</a></h1>
-<p class="sub">Browser → <code>web</code> (nginx) → Service <code>api</code> (Python, mehrere Pods) → <code>redis</code>. Alles im Namespace <code>demo</code> auf einem k3d-Cluster.</p></header>
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:18px 0;gap:16px}
+.mark{display:flex;align-items:center;gap:10px;font:600 1.05rem var(--serif);color:var(--ink);text-decoration:none}
+.mark img{width:28px;height:28px}
+.bar nav{display:flex;gap:18px;font-size:.92rem}.bar nav a{text-decoration:none}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:32px;align-items:center;padding:28px 0 40px}
+.hero h1{font-size:clamp(2.3rem,6vw,3.9rem);letter-spacing:-.01em}
+.hero p{font-size:1.12rem;color:var(--ink-mut);max-width:34em;margin:18px 0 26px}
+.ctas{display:flex;flex-wrap:wrap;gap:12px}
+.stage{position:relative;aspect-ratio:1;width:100%;max-width:460px;justify-self:center}
+#disk{width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+#disk:active{cursor:grabbing}
+.stage figcaption{position:absolute;left:0;right:0;bottom:-30px;text-align:center;font-size:.85rem;color:var(--ink-mut)}
+section{padding:44px 0;border-top:1px solid var(--line)}
+section h2{font-size:clamp(1.5rem,3.4vw,2rem);margin-bottom:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start}
+.prose p{margin:0 0 14px;max-width:36em}
+.gloss{display:grid;grid-template-columns:auto 1fr;gap:12px 18px;margin:0;padding:22px;background:var(--card);border:1px solid var(--line);border-radius:18px}
+.gloss dt{font:600 1rem var(--serif);color:var(--brass)}
+.gloss dd{margin:0;color:var(--ink)}
+.gloss dd small{display:block;color:var(--ink-mut);font-size:.88rem}
+.tries{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:22px 0 26px}
+.try{padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
+.try h3{font-size:1.15rem;margin-bottom:6px}
+.try p{margin:0;color:var(--ink-mut);font-size:.95rem}
+.try .see{display:block;margin-top:12px;color:var(--ink);font-size:.92rem}
+.legend{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
+.legend li{display:flex;gap:10px;align-items:center}
+.sw{width:14px;height:14px;border-radius:50%;flex:none}
+.sw.ring{background:none;border:3px solid var(--ref)}
+.sw.dash{width:26px;height:0;border-radius:0;border-top:2px dashed var(--ref)}
+.tech{columns:2 280px;column-gap:36px}
+.tech li{margin:0 0 10px;break-inside:avoid}
+@media (max-width:820px){
+  .hero{grid-template-columns:1fr;padding-top:8px}
+  .stage{max-width:340px;margin-bottom:28px}
+  .two{grid-template-columns:1fr}
+  .tries{grid-template-columns:1fr}
+}
+</style></head><body>
+<div class="wrap">
+  <header class="bar">
+    <a class="mark" href="./"><img src="favicon.svg" alt="">k8s.celox.io</a>
+    <nav><a href="cluster.html">Ausprobieren</a><a href="tree.html">Astrolabium</a></nav>
+  </header>
 
-<div class="grid2">
-<section class="card"><h2>Load Balancing</h2>
-<div class="row"><button id="hello">1 Request</button><button class="ghost" id="burst">20 Requests</button></div>
-<p>Besuche (in Redis): <span class="big" id="visits">–</span></p>
-<p class="sub">Antwortende Pods – jede Farbe ist ein anderer Pod:</p><div class="hits" id="hits"></div></section>
-
-<section class="card"><h2>Skalieren</h2>
-<p>Replicas der <code>api</code>-Deployment: <span class="big" id="rep">–</span></p>
-<div class="row"><button class="ghost" data-d="-1">− 1</button><button data-d="1">+ 1</button></div>
-<p class="sub">Ändert <code>spec.replicas</code> über die Kubernetes-API. Der Scheduler startet bzw. beendet Pods.</p></section>
+  <div class="hero">
+    <div>
+      <h1>Kubernetes zum Anfassen</h1>
+      <p>Große Webseiten laufen nicht auf einem Computer, sondern in vielen Kopien gleichzeitig. Kubernetes ist das Programm, das diese Kopien verwaltet. Hier kannst du ihm dabei zusehen und selbst eingreifen.</p>
+      <div class="ctas">
+        <a class="btn" href="cluster.html">Kubernetes ausprobieren</a>
+        <a class="btn ghost" href="tree.html">Daten als Karte erkunden</a>
+      </div>
+    </div>
+    <figure class="stage" style="margin:0">
+      <canvas id="disk" aria-label="Kleine Vorschau des JSON-Astrolabiums. Mit Maus oder Finger ziehen verschiebt die Karte."></canvas>
+      <figcaption>Zieh mal an der Scheibe.</figcaption>
+    </figure>
+  </div>
 </div>
 
-<section class="card"><h2>Pods (live)</h2>
-<table><thead><tr><th>Pod</th><th>App</th><th>Status</th><th>Restarts</th><th>IP</th><th></th></tr></thead><tbody id="pods"></tbody></table>
-<p class="sub">„Kill“ löscht einen api-Pod – das ReplicaSet ersetzt ihn sofort (Self-Healing).</p></section>
-</main>
-<script src="app.js"></script></body></html>
+<section>
+  <div class="wrap two">
+    <div class="prose">
+      <h2>Was ist Kubernetes?</h2>
+      <p>Stell dir ein Restaurant vor. Bei viel Andrang braucht es mehr Köche, fällt einer aus, muss sofort jemand einspringen, und am Eingang verteilt jemand die Gäste so, dass niemand ewig wartet.</p>
+      <p>Kubernetes ist dieser Restaurantleiter, nur für Programme. Man sagt ihm, was man haben will, zum Beispiel „drei Kopien von diesem Programm“, und er sorgt rund um die Uhr dafür, dass es so bleibt.</p>
+      <p>Firmen wie Spotify oder Zalando betreiben ihre Dienste so. Diese Vorführung läuft auf einem echten, nur sehr kleinen Kubernetes.</p>
+    </div>
+    <dl class="gloss">
+      <dt>Pod</dt><dd>Eine laufende Kopie eines Programms.<small>Im Restaurant: ein Koch.</small></dd>
+      <dt>Container</dt><dd>Das verpackte Programm, das überall gleich läuft.<small>Die Kochmütze samt Rezept.</small></dd>
+      <dt>Service</dt><dd>Die eine Tür, durch die Anfragen kommen und verteilt werden.<small>Der Empfang am Eingang.</small></dd>
+      <dt>Deployment</dt><dd>Die Beschreibung, wie viele Kopien laufen sollen.<small>Der Dienstplan.</small></dd>
+      <dt>Cluster</dt><dd>Alle Computer, auf denen das läuft, zusammen.<small>Das ganze Restaurant.</small></dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Drei Dinge zum Ausprobieren</h2>
+    <p class="prose" style="margin:0;color:var(--ink-mut)">Auf der Seite „Ausprobieren“ laufen drei Kopien eines kleinen Programms. Ein Protokoll erklärt in Klartext, was Kubernetes gerade tut.</p>
+    <div class="tries">
+      <div class="try"><h3>Arbeit verteilen</h3><p>Schick 20 Anfragen auf einmal los.</p><span class="see">Du siehst, wie sie sich auf die Kopien verteilen, jede in ihrer Farbe.</span></div>
+      <div class="try"><h3>Größer und kleiner</h3><p>Stell ein, wie viele Kopien laufen sollen, von 1 bis 6.</p><span class="see">Kubernetes startet neue oder räumt welche weg, ohne Unterbrechung.</span></div>
+      <div class="try"><h3>Selbstreparatur</h3><p>Lösch eine Kopie, als wäre sie abgestürzt.</p><span class="see">Nach ein paar Sekunden steht ein Ersatz da, ganz von allein.</span></div>
+    </div>
+    <a class="btn" href="cluster.html">Jetzt ausprobieren</a>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <div class="prose">
+      <h2>Das JSON-Astrolabium</h2>
+      <p>Programme tauschen Daten in einem Format namens JSON aus, zum Beispiel eine Bestellung mit Kunde, Adresse und Artikeln. Solche Daten verzweigen sich wie ein Baum, und oft zeigt eine Stelle auf eine andere: „diese Bestellung gehört zu diesem Kunden“.</p>
+      <p>Das Astrolabium legt den Baum auf eine runde Karte mit besonderer Geometrie, wie in den Kreisbildern von M. C. Escher. In der Mitte ist alles groß, zum Rand hin immer kleiner, und trotzdem hat alles Platz. Was dich interessiert, holst du mit einem Tipp in die Mitte, drehst und zoomst mit Maus oder Fingern.</p>
+      <p>Es kann sogar die laufende Kubernetes-Vorführung selbst zeigen: welche Kopie zu welchem Programm gehört.</p>
+      <a class="btn" href="tree.html">Astrolabium öffnen</a>
+    </div>
+    <div class="gloss" style="display:block">
+      <b style="font-family:var(--serif)">So liest du die Karte</b>
+      <ul class="legend">
+        <li><span class="sw" style="background:var(--pod1)"></span>Gruppe von Einträgen, zum Beispiel ein Kunde</li>
+        <li><span class="sw" style="background:var(--pod2)"></span>Liste, zum Beispiel alle Bestellungen</li>
+        <li><span class="sw" style="background:var(--pod3);width:10px;height:10px"></span>Einzelner Wert: Text, Zahl, ja/nein</li>
+        <li><span class="sw ring"></span>Verweis auf eine andere Stelle</li>
+        <li><span class="sw dash"></span>Wohin der Verweis zeigt (rot: ins Leere)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Für Neugierige: wie es gebaut ist</h2>
+    <ul class="tech prose">
+      <li>Ein echter Kubernetes-Cluster (k3s, gestartet mit k3d in Docker) mit drei Programmen: nginx für die Seiten, eine kleine Python-Schnittstelle in drei Kopien und Redis als gemeinsamer Speicher.</li>
+      <li>Keine eigenen Container-Images: Code und Seiten kommen als ConfigMap in den Cluster. Alles zusammen braucht rund 0,5 GB Platte und 700 MB Arbeitsspeicher.</li>
+      <li>Die Schnittstelle darf nur im eigenen Bereich (Namespace <code>demo</code>) Kopien auflisten, löschen und die Anzahl ändern, und zwar höchstens 6.</li>
+      <li>Das Astrolabium rechnet in der hyperbolischen Ebene: Jede Bewegung ist eine Möbius-Transformation, jede Linie ein Kreisbogen senkrecht zum Rand. Das Layout garantiert, dass sich Zweige nie überlappen.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="foot"><span>© 2026 Martin Pfeffer | <a href="https://celox.io">celox.io</a></span><a href="https://github.com/pepperonas/k8s-showcase">Quellcode auf GitHub</a></footer>
+<script src="hyper.js"></script>
+<script src="landing.js"></script>
+</body></html>

@@ -2,7 +2,10 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JSON-Astrolabium</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#181522">
+<meta name="description" content="JSON-Daten als drehbare hyperbolische Karte: mit Maus oder Finger verschieben, zoomen, drehen und jeden Punkt in die Mitte holen.">
+<meta property="og:title" content="JSON-Astrolabium"><meta property="og:image" content="https://k8s.celox.io/og.jpg"><meta name="twitter:card" content="summary_large_image">
 <style>
 :root{
   --plane:#181522;        /* Ebene ausserhalb der Scheibe: Aubergine */
@@ -30,7 +33,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--plane);color:var
 header{position:fixed;top:max(14px,env(safe-area-inset-top));left:16px;right:16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;pointer-events:none}
 header>*{pointer-events:auto}
 h1{margin:0;font:600 1.35rem/1.1 var(--serif);letter-spacing:.01em}
-h1 a{color:var(--ink-mut);font:400 .85rem var(--sans);margin-left:10px;text-decoration:none}h1 a:hover{color:var(--ink)}
+h1 a{color:var(--ink-mut);font:400 .85rem var(--sans);margin-left:12px;text-decoration:none}h1 a:hover{color:var(--ink)}
 .sets{display:flex;gap:6px;flex-wrap:wrap}
 button{font:inherit;color:inherit;cursor:pointer}
 .chip{background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.85rem;min-height:32px}
@@ -60,7 +63,15 @@ pre{margin:8px 0;padding:10px;max-height:170px;overflow:auto;background:color-mi
 .acts button:hover{border-color:var(--brass)}
 #hint{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));max-width:380px;font-size:.83rem;color:var(--ink-mut);
   background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:14px;padding:10px 12px 10px 14px}
-#hint b{color:var(--ink);font-weight:600}#hint ul{margin:4px 0 0;padding-left:16px}
+#hint b{color:var(--ink);font-weight:600}
+#hint .h-intro{margin:4px 0 8px;color:var(--ink)}
+#hint .legend{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px}
+#hint .legend li{display:flex;gap:6px;align-items:center}
+#hint .how{margin:0;padding-left:16px}
+.sw{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block}.sw.small{width:9px;height:9px}
+.sw.ring{border:3px solid var(--t-ref)}.sw.dash{width:22px;height:0;border-radius:0;border-top:2px dashed var(--t-ref)}
+.red{color:var(--broken)}
+#hintOpen{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));width:44px;height:44px;padding:0;font-weight:700}
 #hint button{float:right;background:none;border:0;color:var(--ink-mut);font-size:1.1rem;line-height:1;padding:2px 4px}
 #stats{position:fixed;left:16px;top:max(54px,calc(env(safe-area-inset-top) + 40px));font-size:.8rem;color:var(--ink-mut);pointer-events:none}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(560px,calc(100vw - 32px))}
@@ -84,12 +95,12 @@ dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:v
   #stats{display:none}
 }
 </style></head><body>
-<canvas id="stage" tabindex="0" aria-label="Hyperbolische Ansicht des JSON-Baums. Pfeiltasten verschieben, Plus und Minus zoomen, Q und E drehen, 0 setzt zurück."></canvas>
+<canvas id="stage" tabindex="0" aria-label="Karte der Daten. Pfeiltasten verschieben, Plus und Minus zoomen, Q und E drehen, 0 setzt zurück."></canvas>
 <header>
-  <h1>JSON-Astrolabium<a href="./">← Cluster</a></h1>
+  <h1>JSON-Astrolabium<a href="./">Start</a><a href="cluster.html">Ausprobieren</a></h1>
   <div class="sets" id="sets" role="group" aria-label="Datensatz"></div>
   <div class="toggles">
-    <label><input type="checkbox" id="optValues" checked> Werte</label>
+    <label title="Texte, Zahlen und Ja/Nein-Werte zeigen"><input type="checkbox" id="optValues" checked> Einzelwerte</label>
     <label><input type="checkbox" id="optRefs" checked> Verweise</label>
   </div>
 </header>
@@ -98,23 +109,33 @@ dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:v
 <div class="ctl" role="group" aria-label="Ansicht">
   <button id="bZoomIn" title="Vergrößern (+)" aria-label="Vergrößern">+</button>
   <button id="bZoomOut" title="Verkleinern (−)" aria-label="Verkleinern">−</button>
-  <button id="bHome" title="Zur Wurzel (0)" aria-label="Zur Wurzel">⌂</button>
+  <button id="bHome" title="Zurück zum Anfang (0)" aria-label="Zurück zum Anfang">⌂</button>
   <button id="bRotL" title="Nach links drehen (Q)" aria-label="Nach links drehen">⟲</button>
   <button id="bRotR" title="Nach rechts drehen (E)" aria-label="Nach rechts drehen">⟳</button>
-  <button id="bParent" title="Zum Elternknoten (Rücktaste)" aria-label="Zum Elternknoten">↰</button>
+  <button id="bParent" title="Eine Ebene hoch (Rücktaste)" aria-label="Eine Ebene hoch">↰</button>
 </div>
 <div id="hint"><button id="hintClose" aria-label="Hinweis schließen">×</button>
-  <b>So bewegst du dich</b>
-  <ul>
-    <li>Ziehen verschiebt die hyperbolische Ebene, Antippen holt einen Knoten ins Zentrum.</li>
-    <li>Rad, Pinch oder Doppeltippen zoomt.</li>
-    <li>Am Messingring ziehen, mit zwei Fingern drehen oder Rechtsklick-Ziehen dreht.</li>
+  <b>Eine Karte deiner Daten</b>
+  <p class="h-intro">Jeder Punkt ist ein Eintrag, die Linien zeigen, was wozu gehört. Zum Rand hin wird alles kleiner, hat aber trotzdem Platz.</p>
+  <ul class="legend">
+    <li><span class="sw" style="background:var(--t-object)"></span>Gruppe</li>
+    <li><span class="sw" style="background:var(--t-array)"></span>Liste</li>
+    <li><span class="sw small" style="background:var(--t-string)"></span>Einzelwert</li>
+    <li><span class="sw ring"></span>Verweis</li>
+    <li><span class="sw dash"></span>zeigt auf … <span class="red">(rot: ins Leere)</span></li>
+  </ul>
+  <ul class="how">
+    <li><b>Antippen</b> holt einen Punkt in die Mitte.</li>
+    <li><b>Ziehen</b> verschiebt die Karte.</li>
+    <li><b>Zoomen</b> mit Rad, zwei Fingern oder Doppeltipp.</li>
+    <li><b>Drehen</b> am goldenen Ring oder mit zwei Fingern.</li>
   </ul>
 </div>
+<button id="hintOpen" class="chip" hidden aria-label="Hilfe anzeigen">?</button>
 <dialog id="dlg">
   <form method="dialog">
-    <h2>Eigenes JSON</h2>
-    <p class="type">Verweise als <code>{"$ref": "#/pfad/zum/ziel"}</code> (JSON Pointer). Höchstens 1500 Knoten.</p>
+    <h2>Eigene Daten anzeigen</h2>
+    <p class="type">Füge hier beliebige JSON-Daten ein. Eine Stelle verweist auf eine andere mit <code>{"$ref": "#/pfad/zum/ziel"}</code>. Höchstens 1500 Einträge.</p>
     <textarea id="dlgText" spellcheck="false" aria-label="JSON"></textarea>
     <div class="err" id="dlgErr" role="alert"></div>
     <div class="row"><button value="cancel">Abbrechen</button><button class="pri" id="dlgOk" value="ok">Anzeigen</button></div>
