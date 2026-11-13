@@ -733,13 +733,15 @@
       box.append(b);
     };
     for (const [id, s] of Object.entries(SETS)) chip(id, s.label, () => loadData(s.data, id));
-    chip('cluster', clusterState === 'loading' ? 'Cluster lädt …' : clusterState === 'error' ? 'Cluster nicht erreichbar' : 'Cluster (live)', loadCluster, clusterState === 'error');
+    const clusterLabel = { loading: 'Cluster lädt …', busy: 'Gerade viel los, gleich nochmal', error: 'Cluster nicht erreichbar, nochmal' }[clusterState] || 'Cluster (live)';
+    chip('cluster', clusterLabel, loadCluster, clusterState === 'loading');
     chip('eigenes', 'Eigene Daten', openDialog);
   }
   async function loadCluster() {
     clusterState = 'loading'; renderSets();
     try {
       const r = await fetch('api/tree', { cache: 'no-store' });
+      if (r.status === 429) { clusterState = 'busy'; renderSets(); return; }   // Schutzdrossel des Servers
       if (!r.ok) throw new Error(r.status);
       const data = await r.json();
       clusterState = 'idle';

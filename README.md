@@ -35,6 +35,7 @@ Zwei kleine Vorführungen zum Ausprobieren, live unter **[k8s.celox.io](https://
 - [Was ist Kubernetes, ganz kurz?](#was-ist-kubernetes-ganz-kurz)
 - [Kubernetes zum Anfassen: was man sieht](#kubernetes-zum-anfassen-was-man-sieht)
 - [JSON-Astrolabium: was man sieht](#json-astrolabium-was-man-sieht)
+- [Kann das den Server lahmlegen?](#kann-das-den-server-lahmlegen)
 - [Selbst starten](#selbst-starten)
 - [Wie es gebaut ist](#wie-es-gebaut-ist)
 - [Auf dem Server](#auf-dem-server)
@@ -90,6 +91,20 @@ Wenn ein Punkt in die Mitte fährt, dreht sich die Karte so, dass das, wo er her
 
 Zum Ausprobieren gibt es Bestellungen, eine Schnittstellen-Beschreibung (mit Verweisen im Kreis), einen Stammbaum, **die laufende Kubernetes-Vorführung selbst** („Cluster (live)“: welche Kopie gehört zu welchem Programm) und ein Feld für eigenes JSON.
 
+## Kann das den Server lahmlegen?
+
+Kurz: nein, dafür ist gesorgt. Die Vorführung läuft auf demselben Server wie andere Webseiten. Weil jeder Besucher Programme löschen und vervielfachen darf, ist sie in drei Schichten eingezäunt:
+
+| Schicht | Was sie begrenzt | Wie |
+|---|---|---|
+| **Ganzer Cluster** | höchstens **1 von 4 CPU-Kernen** und **1,2 GB RAM** | Docker-Grenze am k3d-Container (`docker update --cpus 1 --memory 1200m`), bleibt über Neustarts erhalten |
+| **Jede Kopie** | api 0,2 Kerne / 64 MB, Redis und nginx 0,1 Kerne / 64 bzw. 32 MB, höchstens 6 api-Kopien | Kubernetes-`resources.limits`, Obergrenze im API-Code |
+| **Zugang** | je Adresse: 10 Abrufe/s, 20 Änderungen/min, 30 Live-Bäume/min, 20 gleichzeitige Verbindungen; **über alle Adressen zusammen**: 40 Abrufe/s, 2 Änderungen/s, 3 Live-Bäume/s | nginx `limit_req`/`limit_conn`, Antwort 429 „kurz warten“ |
+
+Gemessen im Leerlauf: rund 700 MB RAM und etwa 10 % eines Kerns. Unter Volllast ist bei einem Kern Schluss, die anderen drei bleiben für den Rest des Servers frei. Die Platte wächst nicht: es werden keine Daten gespeichert, die Logs sind auf 3 × 10 MB begrenzt.
+
+**Was bleibt:** k3d braucht einen *privilegierten* Docker-Container. Wer aus dem Cluster ausbräche, hätte Rechte auf dem Server. Die Angriffsfläche ist klein (eigener Python-Code ohne Abhängigkeiten, Rechte nur im Namespace `demo`, Cluster und Kubernetes-API nur auf 127.0.0.1), aber nicht null. Wer das ausschließen will, betreibt die Vorführung auf einem eigenen kleinen Server.
+
 ## Selbst starten
 
 Voraussetzungen: Docker läuft, `kubectl` und `k3d` sind installiert (Mac: `brew install k3d kubectl`).
@@ -124,7 +139,7 @@ Browser ──► nginx (web) ──/api/──► Service api ──► api-Pod
 
 ## Auf dem Server
 
-Live unter `k8s.celox.io`: Der k3d-Cluster läuft in Docker auf dem VPS und ist **nur an 127.0.0.1** gebunden (Seite auf `:4277`, Kubernetes-API auf `:6550`). nginx ist der einzige Weg hinein, drosselt Skalieren/Löschen auf 20 Aufrufe pro Minute je Adresse und sendet strenge Sicherheits-Kopfzeilen. DNS und TLS kommen vom Wildcard-Eintrag `*.celox.io`. Die Seite ist nicht für Suchmaschinen freigegeben.
+Live unter `k8s.celox.io`: Der k3d-Cluster läuft in Docker auf dem VPS und ist **nur an 127.0.0.1** gebunden (Seite auf `:4277`, Kubernetes-API auf `:6550`). nginx ist der einzige Weg hinein, drosselt (siehe [Kann das den Server lahmlegen?](#kann-das-den-server-lahmlegen)) und sendet strenge Sicherheits-Kopfzeilen. Die Docker-Grenzen setzt `up.sh`, wenn `CAP_CPUS`/`CAP_MEM` gesetzt sind; `deploy.sh` tut das automatisch. DNS und TLS kommen vom Wildcard-Eintrag `*.celox.io`. Die Seite ist nicht für Suchmaschinen freigegeben.
 
 ```bash
 ./deploy.sh setup   # einmalig: k3d + kubectl auf dem VPS, Cluster, nginx

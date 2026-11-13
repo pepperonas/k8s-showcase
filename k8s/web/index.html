@@ -135,12 +135,29 @@ section h2{font-size:clamp(1.5rem,3.4vw,2rem);margin-bottom:12px}
 </section>
 
 <section>
+  <div class="wrap two">
+    <div class="prose">
+      <h2>Kann man damit etwas kaputtmachen?</h2>
+      <p>Nur die Vorführung selbst, und die repariert sich. Du darfst hier wirklich Programme löschen. Damit das niemandem schadet, ist die Vorführung eingezäunt: Sie läuft auf demselben Server wie andere Webseiten und darf ihnen nichts wegnehmen.</p>
+      <p>Das ist auch ein Stück Kubernetes zum Anfassen: Grenzen setzen gehört genauso dazu wie Kopien starten.</p>
+    </div>
+    <dl class="gloss">
+      <dt>Feste Obergrenze</dt><dd>Die ganze Vorführung bekommt höchstens einen von vier Prozessorkernen und 1,2 GB Arbeitsspeicher. Mehr geht nicht, egal was passiert.<small>Wie ein eigener Herd, der nie die ganze Küche belegt.</small></dd>
+      <dt>Grenzen je Kopie</dt><dd>Jede Kopie darf nur einen kleinen Teil davon nutzen, und es gibt höchstens sechs.</dd>
+      <dt>Türsteher</dt><dd>Wer zu oft hintereinander klickt, muss kurz warten. Zusätzlich gibt es eine Grenze für alle Besucher zusammen.</dd>
+      <dt>Abgeschirmt</dt><dd>Von außen erreicht man nur diese Seite. Die Steuerung von Kubernetes selbst ist nicht aus dem Internet erreichbar.</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
   <div class="wrap">
     <h2>Für Neugierige: wie es gebaut ist</h2>
     <ul class="tech prose">
       <li>Ein echter Kubernetes-Cluster (k3s, gestartet mit k3d in Docker) mit drei Programmen: nginx für die Seiten, eine kleine Python-Schnittstelle in drei Kopien und Redis als gemeinsamer Speicher.</li>
       <li>Keine eigenen Container-Images: Code und Seiten kommen als ConfigMap in den Cluster. Alles zusammen braucht rund 0,5 GB Platte und 700 MB Arbeitsspeicher.</li>
       <li>Die Schnittstelle darf nur im eigenen Bereich (Namespace <code>demo</code>) Kopien auflisten, löschen und die Anzahl ändern, und zwar höchstens 6.</li>
+      <li>Schutz in drei Schichten: Docker-Deckel für den ganzen Cluster (1 CPU, 1,2 GB RAM), CPU- und Speichergrenzen je Pod, nginx-Drosseln je Adresse und über alle Adressen zusammen. Cluster und Kubernetes-API lauschen nur auf 127.0.0.1.</li>
       <li>Das Astrolabium rechnet in der hyperbolischen Ebene: Jede Bewegung ist eine Möbius-Transformation, jede Linie ein Kreisbogen senkrecht zum Rand. Das Layout garantiert, dass sich Zweige nie überlappen.</li>
     </ul>
   </div>

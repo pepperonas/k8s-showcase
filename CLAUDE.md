@@ -42,3 +42,10 @@ Kubernetes-Showcase für den Laptop (k3d, Namespace `demo`, Port 8088). Ziel: m�
 - Verweise im Ruhezustand nur zart (Alpha 0,26), hervorgehoben nur fuer Auswahl/Hover. Ferne Punkte treten per Alpha zurueck.
 - `body.has-sel` blendet die Hilfe aus, solange das Panel offen ist; `loadData` muss die Klasse entfernen (sonst bleibt die Hilfe nach Datensatzwechsel unsichtbar).
 - Startseiten-Scheibe (`landing.js`): Antippen zentriert, Ziehen zu 60 % gedaempft, nach 3,5 s Ruhe faehrt der Baum zurueck und kreist weiter; Bildunterschrift reagiert auf das erste Anfassen.
+
+## Schutz gegen Lastspitzen (2026-11-13)
+
+- Docker-Deckel: `k3d-showcase-server-0` 1 CPU / 1200m RAM (Swap gleich), `serverlb` 0,25 CPU / 64m. Gesetzt von `up.sh` bei `CAP_CPUS`/`CAP_MEM` (deploy.sh setzt beides). `docker update` bleibt ueber Neustarts erhalten, NICHT aber ueber ein `k3d cluster delete/create` – dann sorgt up.sh wieder dafuer.
+- Pod-CPU-Grenzen: api 200m, redis/web 100m.
+- nginx: je Adresse (`$binary_remote_addr`) UND global (`$server_name`-Zonen) gedrosselt; `/api/tree` eigene engere Grenze (6 k8s-Abfragen je Aufruf); `limit_conn` 20 je Adresse. 429 bedeutet Drossel – Oberflaechen muessen das als „kurz warten“ zeigen, nicht als Ausfall (tree.js `clusterState='busy'`).
+- Die Schutzschichten stehen fuer Laien auf der Startseite („Kann man damit etwas kaputtmachen?“) und in der README – bei Aenderungen der Zahlen beide nachziehen.

@@ -20,7 +20,7 @@ fi
 
 ssh "$VPS" "mkdir -p $DIR"
 rsync -az --delete --chmod=D755,F644 up.sh k8s "$VPS:$DIR/"
-ssh "$VPS" "chmod 755 $DIR/up.sh && cd $DIR && BIND=127.0.0.1:4277 API=127.0.0.1:6550 ./up.sh | tail -2"
+ssh "$VPS" "chmod 755 $DIR/up.sh && cd $DIR && BIND=127.0.0.1:4277 API=127.0.0.1:6550 CAP_CPUS=1 CAP_MEM=1200m ./up.sh | tail -2"
 
 if [[ "${1:-}" == "nginx" || "${1:-}" == "setup" ]]; then
   ssh "$VPS" 'pgrep -x certbot >/dev/null && { echo "certbot laeuft - abgebrochen"; exit 1; } || true'
