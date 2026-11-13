@@ -35,3 +35,10 @@ Kubernetes-Showcase für den Laptop (k3d, Namespace `demo`, Port 8088). Ziel: m�
 - `app.js`: `event.currentTarget` nach einem `await` ist null – Element vorher in eine Variable legen.
 - `og.jpg` + Favicon-PNGs werden aus `tools/og.html` / `tools/icons.html` in Chrome gerendert (README „Vorschaubild und Favicon neu erzeugen“). Fuer transparente PNGs braucht die Vorlage `background:transparent`, sonst kommen RGB-Dateien mit weissen Ecken heraus. Das Apple-Icon ist absichtlich deckend.
 - Bilder liegen als Binaerdaten in der ConfigMap `web-html` (Limit 1 MB gesamt, derzeit ~150 kB).
+
+## Darstellung Astrolabium (2026-11-13, zweite Runde)
+
+- Beschriftungen: `nameOf()` nennt Listeneintraege nach einem Namensfeld (`name/title/id/...`), sonst „Nr. n“ (ab 1); keine `{n}`/`[n]`-Zaehlungen mehr (stehen im Panel). Platzierung auf der dem Elternknoten abgewandten Seite, Kollisionspruefung gegen Punkte und gesetzte Beschriftungen, gezeichnet ausserhalb des Scheiben-Clips (nichts wird am Rand abgeschnitten).
+- Verweise im Ruhezustand nur zart (Alpha 0,26), hervorgehoben nur fuer Auswahl/Hover. Ferne Punkte treten per Alpha zurueck.
+- `body.has-sel` blendet die Hilfe aus, solange das Panel offen ist; `loadData` muss die Klasse entfernen (sonst bleibt die Hilfe nach Datensatzwechsel unsichtbar).
+- Startseiten-Scheibe (`landing.js`): Antippen zentriert, Ziehen zu 60 % gedaempft, nach 3,5 s Ruhe faehrt der Baum zurueck und kreist weiter; Bildunterschrift reagiert auf das erste Anfassen.

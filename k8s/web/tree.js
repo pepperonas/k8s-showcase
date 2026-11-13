@@ -145,6 +145,7 @@
     currentSet = setName;
     selected = null; hover = null; anim = null; inertia = null;
     V = H.identity(); zoom = 1; ox = 0; oy = 0; shift = null;
+    document.body.classList.remove('has-sel');
     resize();
     relayout();
     renderPanel();
@@ -183,13 +184,28 @@
     if (typeof v === 'string') return `„${v.length > 22 ? v.slice(0, 21) + '…' : v}“`;
     return String(v);
   }
+  // Ein Listeneintrag heisst nach einem aussagekraeftigen Feld ("Bestellung 1001", "Hans"),
+  // sonst nach seiner Position ("Nr. 1"). Gezaehlt wird fuer Menschen ab 1.
+  const NAME_FIELDS = ['name', 'title', 'titel', 'label', 'id', 'street', 'description'];
+  function summaryOf(n) {
+    if (n.type !== 'object' || !n.raw) return '';
+    for (const f of NAME_FIELDS) {
+      const v = n.raw[f];
+      if (typeof v === 'string' || typeof v === 'number') { const t = String(v); return t.length > 18 ? t.slice(0, 17) + '…' : t; }
+    }
+    return '';
+  }
+  function nameOf(n) {
+    if (n.key === null) return 'Wurzel';
+    if (typeof n.key === 'number') { const s = summaryOf(n); return s ? s : `Nr. ${n.key + 1}`; }
+    return String(n.key);
+  }
   function labelOf(n) {
-    const k = n.key === null ? 'Wurzel' : String(n.key);
+    const k = nameOf(n);
     switch (n.type) {
-      case 'object': return `${k} {${n.children.length}}`;
-      case 'array': return `${k} [${n.children.length}]`;
-      case 'ref': return `${k} → ${n.target ? (n.target.key === null ? 'Wurzel' : n.target.key) : 'ins Leere'}`;
-      default: return `${k}: ${preview(n.raw)}`;
+      case 'object': case 'array': return k;
+      case 'ref': return `${k} → ${n.target ? nameOf(n.target) : 'ins Leere'}`;
+      default: return typeof n.key === 'number' ? preview(n.raw) : `${k}: ${preview(n.raw)}`;
     }
   }
 
@@ -314,10 +330,10 @@
         ctx.setLineDash([6, 5]);
         ctx.lineDashOffset = hot && !reduced.matches ? -now / 35 : 0;
         ctx.strokeStyle = colors.ref;
-        ctx.globalAlpha = hot ? 1 : (selected || hover ? 0.18 : 0.55);
-        ctx.lineWidth = hot ? 2.2 : 1.3;
+        ctx.globalAlpha = hot ? 1 : (selected || hover ? 0.1 : 0.26);
+        ctx.lineWidth = hot ? 2.2 : 1;
         ctx.stroke(); ctx.setLineDash([]);
-        const size = Math.max(4, Math.min(9, 9 * t.f * Math.sqrt(zoom)));
+        const size = Math.max(hot ? 5 : 3, Math.min(hot ? 9 : 6, 9 * t.f * Math.sqrt(zoom)));
         ctx.beginPath(); arrowHead(geo, t.rr + 2, size); ctx.fillStyle = colors.ref; ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -327,6 +343,7 @@
     const order = visible.filter((n) => n.rr > 0.5).sort((a, b) => a.rr - b.rr);
     for (const n of order) {
       const col = n.type === 'ref' && !n.target ? colors.broken : colors['t-' + n.type];
+      ctx.globalAlpha = n === selected || n === hover || onPath.has(n) ? 1 : 0.45 + 0.55 * Math.min(1, n.f * 1.6);
       ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr, 0, 2 * Math.PI);
       if (n.type === 'object' || n.type === 'array') {
         ctx.fillStyle = col; ctx.fill();
@@ -335,15 +352,19 @@
         ctx.fillStyle = colors.disk; ctx.fill();
         ctx.lineWidth = Math.max(1, n.rr * 0.28); ctx.strokeStyle = col; ctx.stroke();
       } else {
-        ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
+        ctx.fillStyle = col; ctx.fill();
       }
+      ctx.globalAlpha = 1;
       if (n === selected || n === hover) {
         ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr + 4, 0, 2 * Math.PI);
         ctx.lineWidth = n === selected ? 2.5 : 1.5; ctx.strokeStyle = colors.ink; ctx.stroke();
       }
     }
 
-    // Beschriftungen
+    ctx.restore();
+
+    // Beschriftungen: Wichtiges zuerst, jede bekommt die freie Seite (weg vom Elternknoten);
+    // was sich mit schon Gesetztem ueberschneiden wuerde, entfaellt (ausser beim Ausgewaehlten).
     ctx.textBaseline = 'middle';
     const near = new Set([selected, hover]);
     if (selected) {
@@ -352,19 +373,37 @@
       if (selected.type === 'ref' && selected.target) near.add(visibleAncestor(selected.target));
       selected.refsIn.forEach((r) => near.add(r));
     }
-    for (const n of order) {
-      const fs = Math.min(16, n.rr * 0.8 + 4);
-      if (fs < 9.5 && !(near.has(n) && n.rr > 1.5)) continue;
-      ctx.font = `${n.type === 'object' || n.type === 'array' ? 600 : 400} ${Math.max(fs, 11)}px ${getComputedStyle(document.body).fontFamily}`;
+    const rank = (n) => (n === selected ? 4 : n === hover ? 3 : near.has(n) ? 2 : 0) * 1000 + n.rr;
+    const minR = S() < 260 ? 3 : 5;   // Kollisionspruefung haelt es trotzdem ruhig
+    const cand = order.filter((n) => n.rr >= minR || (near.has(n) && n.rr > 1.5)).sort((a, b) => rank(b) - rank(a));
+    const boxes = order.filter((n) => n.rr > 3).map((n) => ({ x: n.sx - n.rr, y: n.sy - n.rr, w: 2 * n.rr, h: 2 * n.rr, own: n }));
+    const hits = (r, self) => boxes.some((b) => b.own !== self && r.x < b.x + b.w && r.x + r.w > b.x && r.y < b.y + b.h && r.y + r.h > b.y);
+    const family = getComputedStyle(document.body).fontFamily;
+    for (const n of cand) {
+      const fs = Math.max(11, Math.min(16, n.rr * 0.8 + 4));
+      const strong = n.type === 'object' || n.type === 'array';
+      ctx.font = `${strong ? 600 : 400} ${fs}px ${family}`;
       const txt = labelOf(n);
+      const w = ctx.measureText(txt).width, h = fs + 4;
+      const gap = n.rr + (n === selected ? 10 : 6);
+      // bevorzugte Seite: weg vom Elternknoten, bei der Wurzel rechts
+      const away = n.parent && n.parent.sx !== undefined ? Math.sign(n.sx - n.parent.sx) || 1 : 1;
+      let placed = null;
+      for (const side of [away, -away]) {
+        const x = side > 0 ? n.sx + gap : n.sx - gap - w;
+        const r = { x: x - 2, y: n.sy - h / 2, w: w + 4, h, own: n };
+        if (rank(n) >= 2000 || !hits(r, n)) { placed = { r, side, x }; break; }
+      }
+      if (!placed) continue;
+      boxes.push(placed.r);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = rank(n) >= 2000 ? 1 : Math.min(1, 0.35 + n.f * 1.1);
       ctx.lineWidth = 4; ctx.strokeStyle = colors.disk; ctx.lineJoin = 'round';
-      ctx.globalAlpha = Math.min(1, (fs - 8) / 4) || 1;
-      ctx.strokeText(txt, n.sx + n.rr + 5, n.sy);
+      ctx.strokeText(txt, placed.x, n.sy);
       ctx.fillStyle = n.type === 'ref' && !n.target ? colors.broken : colors.ink;
-      ctx.fillText(txt, n.sx + n.rr + 5, n.sy);
+      ctx.fillText(txt, placed.x, n.sy);
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
   }
 
   // ---------- Bewegung ----------
@@ -613,6 +652,7 @@
   function select(n) {
     const had = !!selected;
     selected = n; renderPanel();
+    document.body.classList.toggle('has-sel', !!n);   // Hilfe weicht dem Panel
     if (had !== !!n) shiftStage(); else requestDraw();
   }
   // Panel auf/zu: Scheibe gleitet an ihren neuen Platz statt zu springen
@@ -642,7 +682,6 @@
     for (const c of kids) if (c != null) x.append(c);
     return x;
   }
-  const nameOf = (n) => (n.key === null ? 'Wurzel' : String(n.key));
   function renderPanel() {
     if (!selected) { panel.hidden = true; panel.replaceChildren(); return; }
     const n = selected;

@@ -31,7 +31,7 @@
 .stage{position:relative;aspect-ratio:1;width:100%;max-width:460px;justify-self:center}
 #disk{width:100%;height:100%;touch-action:none;cursor:grab;display:block}
 #disk:active{cursor:grabbing}
-.stage figcaption{position:absolute;left:0;right:0;bottom:-30px;text-align:center;font-size:.85rem;color:var(--ink-mut)}
+.stage figcaption{position:absolute;left:0;right:0;bottom:-30px;text-align:center;font-size:.9rem;color:var(--ink-mut);pointer-events:auto}
 section{padding:44px 0;border-top:1px solid var(--line)}
 section h2{font-size:clamp(1.5rem,3.4vw,2rem);margin-bottom:12px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start}
@@ -75,8 +75,8 @@ section h2{font-size:clamp(1.5rem,3.4vw,2rem);margin-bottom:12px}
       </div>
     </div>
     <figure class="stage" style="margin:0">
-      <canvas id="disk" aria-label="Kleine Vorschau des JSON-Astrolabiums. Mit Maus oder Finger ziehen verschiebt die Karte."></canvas>
-      <figcaption>Zieh mal an der Scheibe.</figcaption>
+      <canvas id="disk" aria-label="Kleine Vorschau des JSON-Astrolabiums. Ziehen verschiebt die Karte, Antippen holt einen Punkt in die Mitte."></canvas>
+      <figcaption id="disk-caption">Zieh an der Scheibe oder tipp einen Punkt an.</figcaption>
     </figure>
   </div>
 </div>

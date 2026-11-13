@@ -62,26 +62,71 @@
     ctx.restore();
   }
 
-  // Sanftes Kreisen, bis jemand selbst anfasst
-  let auto = !reduced.matches, last = performance.now(), phase = 0;
+  // Sanftes Kreisen, bis jemand anfasst; nach einer Pause faehrt der Baum zurueck in die Mitte.
+  let auto = !reduced.matches, last = performance.now(), phase = 0, idleSince = 0, anim = null, touched = false;
+  const caption = document.getElementById('disk-caption');
+  function firstTouch() {
+    if (touched) return;
+    touched = true;
+    if (caption) caption.innerHTML = 'Genau so. Im <a href="tree.html">Astrolabium</a> geht noch viel mehr.';
+  }
+  function centerOn(n) {
+    const w = H.apply(V, n.pos);
+    anim = { V0: V, w, t0: performance.now(), dur: reduced.matches ? 0 : 700 + 250 * H.distance([0, 0], w) };
+  }
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   function frame(t) {
     const dt = Math.min(50, t - last); last = t;
-    if (auto) {
+    if (anim) {
+      const k = anim.dur ? Math.min(1, (t - anim.t0) / anim.dur) : 1;
+      V = H.compose(H.translate(H.neg(H.geodesicPoint(anim.w, ease(k)))), anim.V0);
+      if (k >= 1) { anim = null; idleSince = t; }
+    } else if (!drag && touched && idleSince && t - idleSince > 3500 && H.abs2(H.apply(V, root.pos)) > 1e-4) {
+      centerOn(root); idleSince = 0;
+      if (!reduced.matches) auto = true;
+    } else if (auto) {
       phase += dt / 4200;
       const v = [Math.cos(phase) * 0.0016 * dt / 16, Math.sin(phase * 0.7) * 0.0016 * dt / 16];
       V = H.compose(H.rotate(dt / 9000), H.compose(H.translate(v), V));
     }
     draw(t);
-    if (auto || !reduced.matches) requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
   }
 
-  let drag = null;
-  const pos = (e) => { const r = c.getBoundingClientRect(); const z = [(e.clientX - r.left - cx) / S, (e.clientY - r.top - cy) / S]; const m = Math.hypot(z[0], z[1]); return m > 0.95 ? [z[0] * 0.95 / m, z[1] * 0.95 / m] : z; };
-  c.addEventListener('pointerdown', (e) => { auto = false; drag = pos(e); try { c.setPointerCapture(e.pointerId); } catch (x) { /* egal */ } });
-  c.addEventListener('pointermove', (e) => { if (!drag) return; const p = pos(e); V = H.compose(H.dragMap(drag, p), V); drag = p; if (reduced.matches) draw(0); });
-  const up = () => { drag = null; };
+  let drag = null, downAt = null;
+  const local = (e) => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const toDisk = (p) => { const z = [(p[0] - cx) / S, (p[1] - cy) / S]; const m = Math.hypot(z[0], z[1]); return m > 0.95 ? [z[0] * 0.95 / m, z[1] * 0.95 / m] : z; };
+  function hit(p) {
+    let best = null, bd = Infinity;
+    for (const n of all) {
+      const q = scr(n.w), r = ({ group: 0.07, list: 0.062 }[n.type] || 0.04) * S * n.f;
+      const d = Math.hypot(p[0] - q[0], p[1] - q[1]) - r;
+      if (d < 14 && d < bd) { best = n; bd = d; }
+    }
+    return best;
+  }
+  c.addEventListener('pointerdown', (e) => {
+    auto = false; anim = null; idleSince = 0;
+    downAt = local(e); drag = toDisk(downAt);
+    try { c.setPointerCapture(e.pointerId); } catch (x) { /* egal */ }
+    firstTouch();
+  });
+  c.addEventListener('pointermove', (e) => {
+    const p = local(e);
+    if (!drag) { c.style.cursor = hit(p) ? 'pointer' : 'grab'; return; }
+    // gedaempft: die Scheibe folgt dem Finger zu 60 %, damit ein kurzer Zug den Baum nicht an den Rand schleudert
+    const to = toDisk(p);
+    const soft = [drag[0] + (to[0] - drag[0]) * 0.6, drag[1] + (to[1] - drag[1]) * 0.6];
+    V = H.compose(H.dragMap(drag, soft), V);
+    drag = to;
+  });
+  const up = (e) => {
+    if (!drag) return;
+    const p = local(e);
+    if (downAt && Math.hypot(p[0] - downAt[0], p[1] - downAt[1]) < 6) { const n = hit(p); if (n) centerOn(n); }
+    drag = null; downAt = null; idleSince = performance.now();
+  };
   c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
-  c.addEventListener('dblclick', () => { location.href = 'tree.html'; });
 
   addEventListener('resize', () => { size(); draw(performance.now()); });
   matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => { readColors(); draw(performance.now()); });
