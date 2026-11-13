@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K8s Showcase</title>
+<style>
+:root{--bg:#111318;--card:#1d2026;--line:#2c3038;--text:#e3e2e9;--mut:#a9acb7;--pri:#b3c5ff;--ok:#7dd99b;--warn:#ffcf70;--bad:#ff8a80}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;padding:24px 16px}
+main{max-width:980px;margin:0 auto;display:grid;gap:16px}
+h1{margin:0;font-size:1.6rem}p.sub{margin:4px 0 0;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px}
+.card h2{margin:0 0 12px;font-size:1rem;color:var(--pri);text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{background:var(--pri);color:#102a6b;border:0;border-radius:999px;padding:9px 16px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--pri);border:1px solid var(--line)}
+button.kill{background:transparent;color:var(--bad);border:1px solid var(--line);padding:4px 10px;font-size:.8rem}
+.big{font-size:2.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.hits{display:flex;gap:6px;flex-wrap:wrap}.hit{padding:3px 9px;border-radius:999px;font-size:.8rem;font-family:ui-monospace,monospace}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+code{color:var(--warn)}
+@media (prefers-reduced-motion:no-preference){tr{transition:opacity .3s}}
+</style></head><body><main>
+<header><h1>Kubernetes Showcase</h1>
+<p class="sub">Browser → <code>web</code> (nginx) → Service <code>api</code> (Python, mehrere Pods) → <code>redis</code>. Alles im Namespace <code>demo</code> auf einem k3d-Cluster.</p></header>
+
+<div class="grid2">
+<section class="card"><h2>Load Balancing</h2>
+<div class="row"><button id="hello">1 Request</button><button class="ghost" id="burst">20 Requests</button></div>
+<p>Besuche (in Redis): <span class="big" id="visits">–</span></p>
+<p class="sub">Antwortende Pods – jede Farbe ist ein anderer Pod:</p><div class="hits" id="hits"></div></section>
+
+<section class="card"><h2>Skalieren</h2>
+<p>Replicas der <code>api</code>-Deployment: <span class="big" id="rep">–</span></p>
+<div class="row"><button class="ghost" data-d="-1">− 1</button><button data-d="1">+ 1</button></div>
+<p class="sub">Ändert <code>spec.replicas</code> über die Kubernetes-API. Der Scheduler startet bzw. beendet Pods.</p></section>
+</div>
+
+<section class="card"><h2>Pods (live)</h2>
+<table><thead><tr><th>Pod</th><th>App</th><th>Status</th><th>Restarts</th><th>IP</th><th></th></tr></thead><tbody id="pods"></tbody></table>
+<p class="sub">„Kill“ löscht einen api-Pod – das ReplicaSet ersetzt ihn sofort (Self-Healing).</p></section>
+</main>
+<script>
+const $=s=>document.querySelector(s);const colors={};const pal=['#b3c5ff','#7dd99b','#ffcf70','#ff8a80','#d0bcff','#80deea'];
+const col=p=>colors[p]??=pal[Object.keys(colors).length%pal.length];
+async function hello(){try{const r=await fetch('api/hello').then(r=>r.json());$('#visits').textContent=r.visits;
+const s=document.createElement('span');s.className='hit';s.textContent=r.pod.slice(-5);s.style.background=col(r.pod)+'33';s.style.color=col(r.pod);
+$('#hits').prepend(s);while($('#hits').children.length>40)$('#hits').lastChild.remove()}catch(e){}}
+$('#hello').onclick=hello;$('#burst').onclick=async()=>{for(let i=0;i<20;i++)await hello()};
+let rep=0;
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{const n=Math.max(1,Math.min(6,rep+ +b.dataset.d));
+await fetch('api/scale',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({replicas:n})});rep=n;$('#rep').textContent=n;poll()});
+async function kill(name){await fetch('api/kill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});poll()}
+async function poll(){try{const d=await fetch('api/pods').then(r=>r.json());const ps=d.pods;
+rep=d.replicas;$('#rep').textContent=rep;
+$('#pods').innerHTML=ps.map(p=>{const c=p.phase==='Terminating'?'var(--bad)':p.ready?'var(--ok)':'var(--warn)';
+const st=p.phase==='Terminating'?'Terminating':p.ready?'Ready':p.phase;
+return `<tr style="opacity:${p.phase==='Terminating'?.5:1}"><td><code style="color:${p.app==='api'?col(p.name):'inherit'}">${p.name}</code></td><td>${p.app}</td>
+<td><span class="dot" style="background:${c}"></span>${st}</td><td>${p.restarts}</td><td>${p.ip||'–'}</td>
+<td>${p.app==='api'&&p.phase!=='Terminating'?`<button class="kill" data-k="${p.name}">Kill</button>`:''}</td></tr>`}).join('');
+document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>kill(b.dataset.k))}catch(e){}}
+poll();setInterval(poll,1500);
+</script></body></html>
