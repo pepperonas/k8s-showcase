@@ -35,6 +35,12 @@ rules:
   - apiGroups: [""]
     resources: [pods]
     verbs: [get, list, delete]
+  - apiGroups: [""]
+    resources: [services, configmaps, serviceaccounts]
+    verbs: [list]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [list]
   - apiGroups: [apps]
     resources: [deployments]
     resourceNames: [api]
@@ -87,6 +93,7 @@ spec:
         - name: nginx
           image: nginx:alpine
           ports: [{ containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /, port: 80 }, periodSeconds: 3 }
           volumeMounts:
             - { name: html, mountPath: /usr/share/nginx/html }
             - { name: conf, mountPath: /etc/nginx/conf.d }

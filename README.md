@@ -1,6 +1,7 @@
 # k8s-showcase
 
 <p>
+  <a href="https://k8s.celox.io"><img alt="Live" src="https://img.shields.io/badge/live-k8s.celox.io-c9a45c?style=flat-square&labelColor=131318"></a>
   <a href="LICENSE"><img alt="Lizenz" src="https://img.shields.io/github/license/pepperonas/k8s-showcase?style=flat-square&labelColor=131318&color=b3c5ff"></a>
   <a href="https://github.com/pepperonas/k8s-showcase/commits/main"><img alt="Letzter Commit" src="https://img.shields.io/github/last-commit/pepperonas/k8s-showcase?style=flat-square&labelColor=131318&color=7dd99b"></a>
   <img alt="Codegröße" src="https://img.shields.io/github/languages/code-size/pepperonas/k8s-showcase?style=flat-square&labelColor=131318&color=7dd99b">
@@ -9,104 +10,140 @@
   <img alt="Kubernetes" src="https://img.shields.io/badge/Kubernetes-k3s-326CE5?style=flat-square&labelColor=131318&logo=kubernetes&logoColor=326CE5">
   <img alt="k3d" src="https://img.shields.io/badge/Cluster-k3d%20in%20Docker-2496ED?style=flat-square&labelColor=131318&logo=docker&logoColor=2496ED">
   <img alt="Python" src="https://img.shields.io/badge/API-Python%203.12%20stdlib-3776AB?style=flat-square&labelColor=131318&logo=python&logoColor=3776AB">
-  <img alt="Redis" src="https://img.shields.io/badge/State-Redis%207-DC382D?style=flat-square&labelColor=131318&logo=redis&logoColor=DC382D">
+  <img alt="Redis" src="https://img.shields.io/badge/Zustand-Redis%207-DC382D?style=flat-square&labelColor=131318&logo=redis&logoColor=DC382D">
   <img alt="nginx" src="https://img.shields.io/badge/Web-nginx%20alpine-009639?style=flat-square&labelColor=131318&logo=nginx&logoColor=009639">
 </p>
 <p>
-  <img alt="Image-Builds" src="https://img.shields.io/badge/Eigene%20Images-0-ffcf70?style=flat-square&labelColor=131318">
+  <img alt="Eigene Images" src="https://img.shields.io/badge/Eigene%20Images-0-ffcf70?style=flat-square&labelColor=131318">
   <img alt="Abhängigkeiten" src="https://img.shields.io/badge/Laufzeit--Abh%C3%A4ngigkeiten-0-ffcf70?style=flat-square&labelColor=131318">
   <img alt="Platte" src="https://img.shields.io/badge/Platte-~0%2C5%20GB-d0bcff?style=flat-square&labelColor=131318">
   <img alt="RAM" src="https://img.shields.io/badge/RAM-~700%20MB-d0bcff?style=flat-square&labelColor=131318">
-  <img alt="Start" src="https://img.shields.io/badge/Start-1%20Befehl-d0bcff?style=flat-square&labelColor=131318">
+  <img alt="Geometrie" src="https://img.shields.io/badge/Visualisierung-Poincar%C3%A9--Scheibe-c9a45c?style=flat-square&labelColor=131318">
+  <img alt="Eingabe" src="https://img.shields.io/badge/Bedienung-Maus%20%C2%B7%20Touch%20%C2%B7%20Tastatur-c9a45c?style=flat-square&labelColor=131318">
+  <img alt="Tests" src="https://img.shields.io/badge/Geometrie--Tests-10%20gr%C3%BCn-7dd99b?style=flat-square&labelColor=131318">
 </p>
 
-Kleiner, sparsamer Kubernetes-Showcase für den Laptop: drei Container, orchestriert in einem lokalen k3d-Cluster, dazu eine Weboberfläche, an der man **Load Balancing**, **Skalieren** und **Self-Healing** live sieht.
+Zwei kleine Vorführungen zum Ausprobieren, live unter **[k8s.celox.io](https://k8s.celox.io)**:
 
-![Oberfläche](docs/screenshot.png)
+1. **Kubernetes zum Anfassen:** Man sieht, wie ein Programm auf mehrere Kopien verteilt wird, wie man es per Knopfdruck vergrößert und wie es sich selbst repariert, wenn man eine Kopie „abschießt“.
+2. **JSON-Astrolabium:** Datenstrukturen als drehbare Landkarte, in der man mit Maus oder Finger herumfliegt.
+
+![Kubernetes zum Anfassen](docs/screenshot.png)
 
 ## Inhalt
 
-- [Architektur](#architektur)
-- [Schnellstart](#schnellstart)
-- [Was man zeigen kann](#was-man-zeigen-kann)
-- [Warum so klein](#warum-so-klein)
+- [Was ist Kubernetes, ganz kurz?](#was-ist-kubernetes-ganz-kurz)
+- [Kubernetes zum Anfassen: was man sieht](#kubernetes-zum-anfassen-was-man-sieht)
+- [JSON-Astrolabium: was man sieht](#json-astrolabium-was-man-sieht)
+- [Selbst starten](#selbst-starten)
+- [Wie es gebaut ist](#wie-es-gebaut-ist)
+- [Auf dem Server](#auf-dem-server)
 - [Aufbau des Repos](#aufbau-des-repos)
-- [Aufräumen](#aufräumen)
 
-## Architektur
+## Was ist Kubernetes, ganz kurz?
 
-```
-Browser ──► :8088 ──► NodePort 30080 ──► web (nginx)
-                                            │  /api/
-                                            ▼
-                                   Service api ──► api-Pod ×3 (Python)
-                                                       │            │
-                                                       ▼            ▼
-                                              Service redis   Kubernetes-API
-                                                   (Zähler)   (Pods lesen/löschen,
-                                                               Deployment skalieren)
-```
+Stell dir ein Restaurant vor. Die Küche ist ein Programm, die Gäste sind Anfragen aus dem Internet. Bei viel Andrang stellt man mehr Köche ein; fällt ein Koch aus, springt sofort ein neuer ein; und am Eingang verteilt jemand die Gäste so, dass kein Koch überlastet ist.
 
-| Deployment | Image | Replicas | Aufgabe |
+**Kubernetes ist dieser Restaurantleiter für Programme.** Man sagt ihm nur, *was* man haben will – „drei Kopien dieses Programms, bitte“ –, und er sorgt dauerhaft dafür, dass es genau so bleibt. Die einzelnen Kopien heißen **Pods**. Jeder Pod ist ein kleines, abgeschlossenes Paket (ein **Container**), das überall gleich läuft.
+
+## Kubernetes zum Anfassen: was man sieht
+
+Hinter der Seite laufen drei Programme, die zusammenarbeiten:
+
+- **web** zeigt die Seite an, die du im Browser siehst,
+- **api** beantwortet die Anfragen – davon laufen gleich **drei Kopien** nebeneinander,
+- **redis** ist ein kleiner gemeinsamer Notizzettel, auf dem der Besuchszähler steht.
+
+Drei Dinge kann man ausprobieren:
+
+| Knopf | Was passiert | Was es zeigt |
+|---|---|---|
+| **20 Requests** | 20 Anfragen gehen raus; jede farbige Marke zeigt, welche Kopie geantwortet hat | Die Arbeit wird **automatisch verteilt**. Der Zähler stimmt trotzdem, weil alle Kopien denselben Notizzettel benutzen. |
+| **+ 1 / − 1** | Es laufen mehr oder weniger Kopien | **Skalieren**: Kubernetes startet neue Kopien oder räumt welche weg, ohne dass die Seite ausfällt. |
+| **Kill** | Eine Kopie wird gelöscht | **Selbstheilung**: Nach wenigen Sekunden steht eine neue Kopie an ihrer Stelle, weil Kubernetes merkt, dass eine fehlt. |
+
+Die Tabelle „Pods (live)“ zeigt dabei in Echtzeit, welche Kopien gerade laufen, starten oder verschwinden.
+
+## JSON-Astrolabium: was man sieht
+
+![JSON-Astrolabium](docs/astrolabium.png)
+
+**JSON** ist das Format, in dem Programme sich gegenseitig Daten schicken: eine Bestellung mit Kunde, Adresse und Artikeln zum Beispiel. Solche Daten sind wie ein Baum verzweigt. Oft zeigt eine Stelle auf eine andere („diese Bestellung gehört zu *diesem* Kunden“) – das sind **Verweise** (`$ref`).
+
+Das Astrolabium zeichnet so einen Baum auf eine runde Scheibe. Das Besondere: Die Scheibe ist eine **hyperbolische Ebene**, wie in den Kreisbildern von M. C. Escher. Zur Mitte hin ist alles groß, zum Rand hin wird es immer kleiner, aber es hat trotzdem alles Platz – egal wie tief der Baum ist. Was einen interessiert, holt man einfach in die Mitte.
+
+- **Punkte** sind Einträge: blau für Gruppen, grün für Listen, die kleinen bunten für einzelne Werte, hohle Ringe für Verweise.
+- **Linien** zeigen, was wozu gehört. Sie sind gebogen, weil das in dieser Geometrie der kürzeste Weg ist.
+- **Gestrichelte Pfeile** sind Verweise. **Rot** heißt: Der Verweis zeigt ins Leere.
+
+So bewegst du dich:
+
+| Was du willst | Maus / Trackpad | Handy / Tablet | Tastatur |
 |---|---|---|---|
-| `web` | `nginx:alpine` | 1 | liefert die Oberfläche, leitet `/api/` an den Service `api` weiter |
-| `api` | `python:3.12-alpine` | 3 (1–6) | zählt Besuche in Redis, meldet den antwortenden Pod, spricht mit der Kubernetes-API |
-| `redis` | `redis:7-alpine` | 1 | gemeinsamer Zustand aller api-Pods |
+| Herumschieben | Ziehen (gleitet nach) | Wischen | Pfeiltasten |
+| Einen Punkt in die Mitte holen | Anklicken | Antippen | `[` `]` Nachbarn, Rücktaste eine Ebene hoch |
+| Näher heran / weiter weg | Mausrad, Doppelklick | Zwei Finger auseinander, Doppeltippen | `+` `−` |
+| Drehen | Am Messingring ziehen oder mit rechter Maustaste ziehen | Zwei Finger drehen | `Q` `E` |
+| Zurück zum Anfang | ⌂ | ⌂ | `0` |
 
-Die API darf über ihren **ServiceAccount** nur, was die **Role** im Namespace `demo` erlaubt: Pods lesen und löschen, und ausschließlich die Deployment `api` lesen und patchen. Gelöscht werden über die Oberfläche nur `api-`-Pods.
+Wenn ein Punkt in die Mitte fährt, dreht sich die Karte so, dass das, wo er herkommt, links liegt. Man liest also immer von links nach rechts tiefer hinein. Rechts (am Handy unten) steht, was in dem Eintrag drinsteht und wer auf ihn verweist; ein Klick auf einen Verweis fliegt direkt dorthin.
 
-## Schnellstart
+Zum Ausprobieren gibt es Bestellungen, eine Schnittstellen-Beschreibung (mit Verweisen im Kreis), einen Stammbaum, **die laufende Kubernetes-Vorführung selbst** („Cluster (live)“: welche Kopie gehört zu welchem Programm) und ein Feld für eigenes JSON.
 
-Voraussetzungen: Docker (Desktop) läuft, `kubectl` und `k3d` sind installiert (`brew install k3d`).
+## Selbst starten
 
-```bash
-./up.sh
-# → http://localhost:8088
-```
-
-`up.sh` legt beim ersten Aufruf den Cluster `showcase` an (ein Node, Traefik und Metrics-Server abgeschaltet), spielt die Manifeste ein, erzeugt die ConfigMaps aus `k8s/` und wartet, bis alles läuft. Ein erneuter Aufruf deployt Änderungen an Code oder Oberfläche.
-
-## Was man zeigen kann
-
-| Aktion in der Oberfläche | Was Kubernetes tut |
-|---|---|
-| **20 Requests** | Der Service verteilt die Anfragen auf die api-Pods, jede Farbe ist ein anderer Pod. Der Zähler bleibt dank Redis über alle Pods hinweg konsistent. |
-| **+ 1 / − 1** | `spec.replicas` der Deployment wird per API gepatcht, der Scheduler startet bzw. beendet Pods. |
-| **Kill** | Der Pod wird gelöscht, das ReplicaSet stellt den Sollzustand nach ~4 s wieder her. |
-
-Am eindrucksvollsten mit einem Terminal daneben:
+Voraussetzungen: Docker läuft, `kubectl` und `k3d` sind installiert (Mac: `brew install k3d kubectl`).
 
 ```bash
-kubectl -n demo get pods -w
+./up.sh      # Cluster anlegen und alles starten -> http://localhost:8088
+./down.sh    # alles wieder entfernen, der Speicherplatz ist danach frei
 ```
 
-## Warum so klein
+Das Astrolabium läuft auch ganz ohne Kubernetes: `k8s/web/` mit `python3 -m http.server` ausliefern und `tree.html` öffnen (dann ohne „Cluster (live)“).
 
-- **Keine eigenen Images:** Der API-Code (`k8s/api.py`) und die Oberfläche (`k8s/index.html`) kommen als ConfigMap in den Cluster. Es gibt keinen `docker build`, keine Registry, keinen Build-Cache.
-- **Nur Alpine-Images** und **k3s** statt eines vollen Kubernetes.
-- **Null Python-Abhängigkeiten:** Redis wird über das RESP-Protokoll direkt per Socket angesprochen, die Kubernetes-API per `urllib` mit dem ServiceAccount-Token.
-- **Ressourcen-Limits** an jedem Container (16–64 MiB).
+## Wie es gebaut ist
 
-Gemessen: rund 0,5 GB auf der Platte, rund 700 MB RAM für den ganzen Cluster.
+Für alle, die es genauer wissen wollen.
+
+```
+Browser ──► nginx (web) ──/api/──► Service api ──► api-Pod ×3 (Python)
+                                                     │           │
+                                                     ▼           ▼
+                                              Service redis   Kubernetes-API
+```
+
+| Deployment | Image | Kopien | Aufgabe |
+|---|---|---|---|
+| `web` | `nginx:alpine` | 1 | liefert die Seiten, leitet `/api/` an den Service `api` weiter |
+| `api` | `python:3.12-alpine` | 3 (1–6) | Besuchszähler in Redis, Pod-Liste, Skalieren, Pod löschen, Namespace als `$ref`-Baum |
+| `redis` | `redis:7-alpine` | 1 | gemeinsamer Zustand |
+
+- **Klein gehalten:** keine eigenen Images (Code und Seiten kommen als ConfigMap in den Cluster), nur Alpine-Images, **k3s** statt eines vollen Kubernetes, keine Python-Abhängigkeiten (Redis per Socket, Kubernetes-API per `urllib`), Speicherlimits an jedem Container.
+- **Rechte:** Die API spricht über einen ServiceAccount mit Kubernetes und darf nur im Namespace `demo`: Pods lesen und löschen (nur `api-`-Pods), die Deployment `api` skalieren (1–6) und die übrigen Objekte auflisten. Von ConfigMaps gibt sie nur Dateinamen aus.
+- **Astrolabium:** Jede Bewegung ist eine Möbius-Transformation der Poincaré-Scheibe, Kanten sind Geodäten (Kreisbögen senkrecht zum Rand). Beim Layout bekommt jeder Unterbaum einen Winkelanteil seines Elternknotens; der Abstand zum Kind ist so gewählt, dass die Halbebene dahinter (Sichtwinkel = 2 × Winkel der Parallelität) in diesen Anteil passt – Unterbäume überlappen nie. Die Geometrie steckt in `k8s/web/hyper.js` und ist getestet: `node --test tests/hyper.test.mjs`.
+
+## Auf dem Server
+
+Live unter `k8s.celox.io`: Der k3d-Cluster läuft in Docker auf dem VPS und ist **nur an 127.0.0.1** gebunden (Seite auf `:4277`, Kubernetes-API auf `:6550`). nginx ist der einzige Weg hinein, drosselt Skalieren/Löschen auf 20 Aufrufe pro Minute je Adresse und sendet strenge Sicherheits-Kopfzeilen. DNS und TLS kommen vom Wildcard-Eintrag `*.celox.io`. Die Seite ist nicht für Suchmaschinen freigegeben.
+
+```bash
+./deploy.sh setup   # einmalig: k3d + kubectl auf dem VPS, Cluster, nginx
+./deploy.sh         # Code/Seiten aktualisieren
+./deploy.sh nginx   # zusätzlich vHost + Kopfzeilen neu ausrollen
+```
 
 ## Aufbau des Repos
 
 ```
-up.sh               Cluster anlegen und deployen
-down.sh             Cluster und Images entfernen
-k8s/manifests.yaml  Namespace, Deployments, Services, RBAC
-k8s/api.py          API (Python-Standardbibliothek)
-k8s/index.html      Oberfläche (eine Datei, kein Build)
-k8s/nginx.conf      Auslieferung + Proxy auf /api/
+up.sh / down.sh     Cluster starten bzw. entfernen
+deploy.sh           Ausrollen nach k8s.celox.io
+deploy/nginx/       vHost + Sicherheits-Kopfzeilen für den VPS
+k8s/manifests.yaml  Namespace, Deployments, Services, Rechte
+k8s/api.py          API (nur Python-Standardbibliothek)
+k8s/nginx.conf      nginx im Cluster: Seiten + Weiterleitung auf /api/
+k8s/web/            Seiten: index.html + app.js (Cluster), tree.html + tree.js (Astrolabium), hyper.js (Geometrie)
+tests/              Geometrie-Tests (node --test)
 ```
-
-## Aufräumen
-
-```bash
-./down.sh
-```
-
-Löscht den Cluster und die k3s-Images, der Speicherplatz ist danach wieder frei.
 
 ## Lizenz
 

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>JSON-Astrolabium</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --plane:#181522;        /* Ebene ausserhalb der Scheibe: Aubergine */
+  --disk:#0e1a2c;         /* Scheibe: Nachtblau */
+  --brass:#c9a45c;        /* Ring, Geodaeten-Kanten */
+  --brass-dim:#7d6a45;
+  --ink:#ece6d8;          /* Text */
+  --ink-mut:#b5ae9f;
+  --ref:#f0839a;          /* Verweise */
+  --broken:#ff5d5d;
+  --t-object:#8ab4f8; --t-array:#8fd3a8; --t-string:#e8c47c; --t-number:#c6a0f6; --t-literal:#a8b0ba; --t-ref:#f0839a;
+  --panel:#211d2c; --line:#3a3446;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:light){:root{
+  --plane:#e9e4f0;--disk:#f7f4ec;--brass:#8a6a2a;--brass-dim:#b9a576;--ink:#1f1b26;--ink-mut:#5a5466;
+  --ref:#c2335a;--broken:#c62828;--t-object:#2f5bd0;--t-array:#2d7a4a;--t-string:#8a5a00;--t-number:#6b3fb5;--t-literal:#5b6470;--t-ref:#c2335a;
+  --panel:#fbf9f5;--line:#d6cfdf}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--plane);color:var(--ink);font:15px/1.45 var(--sans)}
+#stage{position:fixed;inset:0;touch-action:none;outline:none;cursor:grab;-webkit-user-select:none;user-select:none}
+#stage.grabbing{cursor:grabbing}#stage.on-node{cursor:pointer}#stage.on-ring{cursor:ew-resize}
+#stage:focus-visible{box-shadow:inset 0 0 0 3px var(--brass)}
+header{position:fixed;top:max(14px,env(safe-area-inset-top));left:16px;right:16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;pointer-events:none}
+header>*{pointer-events:auto}
+h1{margin:0;font:600 1.35rem/1.1 var(--serif);letter-spacing:.01em}
+h1 a{color:var(--ink-mut);font:400 .85rem var(--sans);margin-left:10px;text-decoration:none}h1 a:hover{color:var(--ink)}
+.sets{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;color:inherit;cursor:pointer}
+.chip{background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.85rem;min-height:32px}
+.chip[aria-pressed=true]{background:var(--brass);border-color:var(--brass);color:var(--disk)}
+.chip:disabled{opacity:.6;cursor:not-allowed}
+.toggles{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink-mut)}
+.toggles label{display:flex;gap:5px;align-items:center;cursor:pointer;min-height:32px}
+.ctl{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,44px);gap:6px}
+.ctl button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 88%,transparent);font-size:1.15rem;display:grid;place-items:center}
+.ctl button:hover{border-color:var(--brass)}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+#panel{position:fixed;top:72px;right:16px;width:320px;max-height:calc(100% - 180px);overflow:auto;background:color-mix(in srgb,var(--panel) 94%,transparent);
+  border:1px solid var(--line);border-radius:18px;padding:16px 16px 14px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#panel[hidden]{display:none}
+#panel h2{margin:0 0 2px;font:600 1.15rem/1.25 var(--serif);word-break:break-word}
+.type{font-size:.8rem;color:var(--ink-mut)}
+.crumbs{display:flex;flex-wrap:wrap;gap:2px;margin:10px 0;font-size:.82rem}
+.crumbs button{background:none;border:0;padding:2px 4px;border-radius:6px;color:var(--brass)}
+.crumbs button:hover{background:color-mix(in srgb,var(--brass) 18%,transparent)}
+.crumbs span{color:var(--ink-mut)}
+pre{margin:8px 0;padding:10px;max-height:170px;overflow:auto;background:color-mix(in srgb,var(--disk) 70%,transparent);border-radius:10px;font:12.5px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.refs{margin:10px 0 4px;font-size:.88rem}.refs p{margin:6px 0 4px;color:var(--ink-mut)}
+.refs button{display:inline-block;margin:0 4px 4px 0;border:1px solid var(--ref);color:var(--ref);background:none;border-radius:999px;padding:3px 10px;font-size:.82rem}
+.refs .broken{border-color:var(--broken);color:var(--broken);cursor:default}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.acts button{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 12px;font-size:.85rem}
+.acts button:hover{border-color:var(--brass)}
+#hint{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));max-width:380px;font-size:.83rem;color:var(--ink-mut);
+  background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:14px;padding:10px 12px 10px 14px}
+#hint b{color:var(--ink);font-weight:600}#hint ul{margin:4px 0 0;padding-left:16px}
+#hint button{float:right;background:none;border:0;color:var(--ink-mut);font-size:1.1rem;line-height:1;padding:2px 4px}
+#stats{position:fixed;left:16px;top:max(54px,calc(env(safe-area-inset-top) + 40px));font-size:.8rem;color:var(--ink-mut);pointer-events:none}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(560px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(10,8,16,.55)}
+dialog h2{margin:0 0 8px;font:600 1.15rem var(--serif)}
+dialog textarea{width:100%;height:240px;background:var(--disk);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:12.5px/1.45 ui-monospace,Menlo,monospace}
+dialog .err{color:var(--broken);font-size:.85rem;min-height:1.2em;margin:6px 0}
+dialog .row{display:flex;gap:8px;justify-content:flex-end}
+dialog .row button{border:1px solid var(--line);background:none;border-radius:999px;padding:7px 14px}
+dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:var(--disk)}
+@media (max-width:760px){
+  #panel{top:auto;bottom:0;left:0;right:0;width:auto;max-height:42vh;border-radius:18px 18px 0 0;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  #panel:not([hidden])~.ctl{bottom:calc(42vh + 10px)}
+  .ctl{grid-template-columns:repeat(6,40px);gap:4px}.ctl button{width:40px;height:40px}
+  #hint{right:16px;max-width:none;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 52px)}
+  header{gap:8px 12px}
+  h1{font-size:1.15rem}
+  .sets{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none;padding-bottom:2px}
+  .sets::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap}
+  #stats{display:none}
+}
+</style></head><body>
+<canvas id="stage" tabindex="0" aria-label="Hyperbolische Ansicht des JSON-Baums. Pfeiltasten verschieben, Plus und Minus zoomen, Q und E drehen, 0 setzt zurück."></canvas>
+<header>
+  <h1>JSON-Astrolabium<a href="./">← Cluster</a></h1>
+  <div class="sets" id="sets" role="group" aria-label="Datensatz"></div>
+  <div class="toggles">
+    <label><input type="checkbox" id="optValues" checked> Werte</label>
+    <label><input type="checkbox" id="optRefs" checked> Verweise</label>
+  </div>
+</header>
+<div id="stats" aria-live="polite"></div>
+<aside id="panel" hidden aria-live="polite"></aside>
+<div class="ctl" role="group" aria-label="Ansicht">
+  <button id="bZoomIn" title="Vergrößern (+)" aria-label="Vergrößern">+</button>
+  <button id="bZoomOut" title="Verkleinern (−)" aria-label="Verkleinern">−</button>
+  <button id="bHome" title="Zur Wurzel (0)" aria-label="Zur Wurzel">⌂</button>
+  <button id="bRotL" title="Nach links drehen (Q)" aria-label="Nach links drehen">⟲</button>
+  <button id="bRotR" title="Nach rechts drehen (E)" aria-label="Nach rechts drehen">⟳</button>
+  <button id="bParent" title="Zum Elternknoten (Rücktaste)" aria-label="Zum Elternknoten">↰</button>
+</div>
+<div id="hint"><button id="hintClose" aria-label="Hinweis schließen">×</button>
+  <b>So bewegst du dich</b>
+  <ul>
+    <li>Ziehen verschiebt die hyperbolische Ebene, Antippen holt einen Knoten ins Zentrum.</li>
+    <li>Rad, Pinch oder Doppeltippen zoomt.</li>
+    <li>Am Messingring ziehen, mit zwei Fingern drehen oder Rechtsklick-Ziehen dreht.</li>
+  </ul>
+</div>
+<dialog id="dlg">
+  <form method="dialog">
+    <h2>Eigenes JSON</h2>
+    <p class="type">Verweise als <code>{"$ref": "#/pfad/zum/ziel"}</code> (JSON Pointer). Höchstens 1500 Knoten.</p>
+    <textarea id="dlgText" spellcheck="false" aria-label="JSON"></textarea>
+    <div class="err" id="dlgErr" role="alert"></div>
+    <div class="row"><button value="cancel">Abbrechen</button><button class="pri" id="dlgOk" value="ok">Anzeigen</button></div>
+  </form>
+</dialog>
+<script src="hyper.js"></script>
+<script src="tree.js"></script>
+</body></html>
