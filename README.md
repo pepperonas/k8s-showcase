@@ -28,7 +28,7 @@ Zwei kleine Vorführungen zum Ausprobieren, live unter **[k8s.celox.io](https://
 1. **Kubernetes ausprobieren** (`/cluster.html`): Man sieht, wie ein Programm auf mehrere Kopien verteilt wird, wie man es per Knopfdruck vergrößert und wie es sich selbst repariert, wenn man eine Kopie „abschießt“.
 2. **JSON-Astrolabium** (`/tree.html`): Datenstrukturen als drehbare Landkarte, in der man mit Maus oder Finger herumfliegt.
 
-![Kubernetes zum Anfassen](docs/screenshot.png)
+![Startseite: Kubernetes zum Anfassen](docs/landing.png)
 
 ## Inhalt
 
@@ -48,6 +48,8 @@ Stell dir ein Restaurant vor. Die Küche ist ein Programm, die Gäste sind Anfra
 **Kubernetes ist dieser Restaurantleiter für Programme.** Man sagt ihm nur, *was* man haben will – „drei Kopien dieses Programms, bitte“ –, und er sorgt dauerhaft dafür, dass es genau so bleibt. Die einzelnen Kopien heißen **Pods**. Jeder Pod ist ein kleines, abgeschlossenes Paket (ein **Container**), das überall gleich läuft.
 
 ## Kubernetes zum Anfassen: was man sieht
+
+![Kubernetes ausprobieren: Anleitung, Arbeit verteilen, Kopien ändern, laufende Kopien und Klartext-Protokoll](docs/screenshot.png)
 
 Hinter der Seite laufen drei Programme, die zusammenarbeiten:
 
@@ -144,7 +146,7 @@ Browser ──► nginx (web) ──/api/──► Service api ──► api-Pod
 | `redis` | `redis:7-alpine` | 1 | gemeinsamer Zustand |
 
 - **Klein gehalten:** keine eigenen Images (Code und Seiten kommen als ConfigMap in den Cluster), nur Alpine-Images, **k3s** statt eines vollen Kubernetes, keine Python-Abhängigkeiten (Redis per Socket, Kubernetes-API per `urllib`), Speicherlimits an jedem Container.
-- **Rechte:** Die API spricht über einen ServiceAccount mit Kubernetes und darf nur im Namespace `demo`: Pods lesen und löschen (nur `api-`-Pods), die Deployment `api` skalieren (1–6) und die übrigen Objekte auflisten. Von ConfigMaps gibt sie nur Dateinamen aus.
+- **Rechte:** Die API spricht über einen ServiceAccount mit Kubernetes und darf nur im Namespace `demo`: Pods lesen und löschen (gelöscht werden nur `api-`-Pods), ausschließlich die Deployment `api` lesen und skalieren (1–6) sowie Deployments, ReplicaSets, Services, ConfigMaps und ServiceAccounts auflisten (für den Live-Baum). Von ConfigMaps gibt sie nur Dateinamen aus, nie den Inhalt.
 - **Astrolabium:** Jede Bewegung ist eine Möbius-Transformation der Poincaré-Scheibe, Kanten sind Geodäten (Kreisbögen senkrecht zum Rand). Beim Layout bekommt jeder Unterbaum einen Winkelanteil seines Elternknotens; der Abstand zum Kind ist so gewählt, dass die Halbebene dahinter (Sichtwinkel = 2 × Winkel der Parallelität) in diesen Anteil passt – Unterbäume überlappen nie. Die Geometrie steckt in `k8s/web/hyper.js` und ist getestet: `node --test tests/hyper.test.mjs`.
 
 ## Auf dem Server
