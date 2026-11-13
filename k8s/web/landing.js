@@ -18,13 +18,13 @@
   let V = H.identity(), W = 0, S = 0, cx = 0, cy = 0, dpr = 1, col = {};
   function readColors() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ['disk', 'brass', 'brass-dim', 'ref', 'pod1', 'pod2', 'pod3', 'pod5', 'ink']) col[k] = cs.getPropertyValue('--' + k).trim();
+    for (const k of ['plane', 'disk', 'brass', 'brass-dim', 'ref', 'pod1', 'pod2', 'pod3', 'pod5', 'ink']) col[k] = cs.getPropertyValue('--' + k).trim();
   }
   function size() {
     dpr = Math.min(devicePixelRatio || 1, 2.5);
     W = c.clientWidth;
     c.width = Math.round(W * dpr); c.height = Math.round(W * dpr);
-    cx = cy = W / 2; S = W / 2 - 22;
+    cx = cy = W / 2; S = W / 2 - 24;
   }
   const scr = (z) => [cx + S * z[0], cy + S * z[1]];
   function geo(a, b) {
@@ -38,28 +38,34 @@
   function draw(t) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, W);
-    ctx.beginPath(); ctx.arc(cx, cy, S, 0, 7); ctx.fillStyle = col.disk; ctx.fill();
-    ctx.strokeStyle = col.brass; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, S + 14, 0, 7); ctx.strokeStyle = col['brass-dim']; ctx.lineWidth = 1; ctx.stroke();
-    const rot = H.angleOf(V);
-    ctx.beginPath();
-    for (let i = 0; i < 48; i++) { const a = rot + i * Math.PI / 24, l = i % 4 ? 4 : 9;
-      ctx.moveTo(cx + Math.cos(a) * (S + 4), cy + Math.sin(a) * (S + 4)); ctx.lineTo(cx + Math.cos(a) * (S + 4 + l), cy + Math.sin(a) * (S + 4 + l)); }
-    ctx.strokeStyle = col.brass; ctx.stroke();
+    const rot = H.angleOf(V), dark = Orb.isDark(col.plane);
+    // Schlagschatten innerhalb der Leinwand (der volle Hintergrund gehoert der Seite)
+    const sh = ctx.createRadialGradient(cx + S * 0.05, cy + S * 0.1, S * 0.8, cx + S * 0.05, cy + S * 0.1, S * 1.08);
+    sh.addColorStop(0, `rgba(0,0,0,${dark ? 0.5 : 0.16})`); sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(cx + S * 0.05, cy + S * 0.1, S * 1.08, 0, 7); ctx.fill();
+    Orb.drawDisk(ctx, cx, cy, S, col);
     for (const n of all) { n.w = H.apply(V, n.pos); n.f = 1 - H.abs2(n.w); }
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, S, 0, 7); ctx.clip();
+    Orb.drawGrid(ctx, H, V, scr, geo, S, col, dark ? 0.18 : 0.26);
     ctx.strokeStyle = col['brass-dim']; ctx.lineCap = 'round';
-    for (const n of all) if (n.parent) { ctx.beginPath(); geo(n.parent.w, n.w); ctx.lineWidth = Math.max(0.5, 2 * (n.f + n.parent.f) / 2); ctx.stroke(); }
-    ctx.setLineDash([5, 4]); ctx.lineDashOffset = reduced.matches ? 0 : -t / 40; ctx.strokeStyle = col.ref; ctx.lineWidth = 1.4;
-    for (const [a, b] of refs) { ctx.beginPath(); geo(a.w, b.w); ctx.globalAlpha = 0.75; ctx.stroke(); }
-    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    for (const n of all) if (n.parent) { ctx.beginPath(); geo(n.parent.w, n.w); ctx.globalAlpha = 0.4 + 0.5 * Math.min(1, n.f + n.parent.f); ctx.lineWidth = Math.max(0.5, 2 * (n.f + n.parent.f) / 2); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    // Verweise: zarte Bahn, darauf wandernde Lichter
+    ctx.strokeStyle = col.ref; ctx.lineWidth = 1.1;
+    for (const [a, b] of refs) {
+      ctx.beginPath(); geo(a.w, b.w); ctx.globalAlpha = 0.35; ctx.stroke(); ctx.globalAlpha = 1;
+      if (!reduced.matches) Orb.drawComet(ctx, H, scr, a.w, b.w, ((t / 2200) + refs.indexOf(refs.find((r) => r[0] === a)) * 0.33) % 1, col.ref, 3.2);
+    }
     const base = { group: 0.07, list: 0.062, leaf: 0.04, leaf2: 0.04 };
     const fill = { group: col.pod1, list: col.pod2, leaf: col.pod3, leaf2: col.pod5 };
     for (const n of [...all].sort((a, b) => a.f - b.f)) {
       const r = base[n.type] * S * n.f; if (r < 0.4) continue;
-      const p = scr(n.w); ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fillStyle = fill[n.type]; ctx.fill();
+      const p = scr(n.w);
+      Orb.drawNode(ctx, p[0], p[1], r, fill[n.type], 'orb', { alpha: 0.5 + 0.5 * Math.min(1, n.f * 1.6), glow: n === root ? 0.6 : 0, dark });
     }
+    Orb.drawGlass(ctx, cx, cy, S, col);
     ctx.restore();
+    Orb.drawRing(ctx, cx, cy, S, rot, col, 15);
   }
 
   // Sanftes Kreisen, bis jemand anfasst; nach einer Pause faehrt der Baum zurueck in die Mitte.

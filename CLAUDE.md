@@ -49,3 +49,13 @@ Kubernetes-Showcase für den Laptop (k3d, Namespace `demo`, Port 8088). Ziel: m�
 - Pod-CPU-Grenzen: api 200m, redis/web 100m.
 - nginx: je Adresse (`$binary_remote_addr`) UND global (`$server_name`-Zonen) gedrosselt; `/api/tree` eigene engere Grenze (6 k8s-Abfragen je Aufruf); `limit_conn` 20 je Adresse. 429 bedeutet Drossel – Oberflaechen muessen das als „kurz warten“ zeigen, nicht als Ausfall (tree.js `clusterState='busy'`).
 - Die Schutzschichten stehen fuer Laien auf der Startseite („Kann man damit etwas kaputtmachen?“) und in der README – bei Aenderungen der Zahlen beide nachziehen.
+
+## Darstellung (orb.js, 2026-11-13)
+
+- `orb.js` (Global `Orb`) rendert fuer tree.js, landing.js und tools/og.html: Backdrop (Sterne nur im dunklen Thema, Lichthof, Schlagschatten), Glaskugel (`drawDisk` darunter, `drawGlass` ueber den Knoten), hyperbolisches Gitter (`drawGrid`, Kreise per Drei-Punkte-Abbildung), Messingring (`drawRing`, Konusverlauf mit fester Lichtrichtung, gravierte Teilung dreht mit), Knoten als Sprite-Kugeln (`drawNode`), Lichter auf Geodaeten (`drawComet`, `geoLerp`).
+- Sprites werden je Farbe einmal vorgerendert (Cache); `orbSprite`/`glowSprite` niemals pro Bild neu erzeugen.
+- ⚠️ Ringflaeche: zwischen den zwei `arc`-Aufrufen ein `moveTo`, sonst verbindet eine Linie beide Kreise zu einem sichtbaren Keil.
+- ⚠️ Verlaeufe nie in eine kleinere Form schneiden (harte Kante); stattdessen Transformation + `fillRect`.
+- Uebergaenge in tree.js: `morph` ({t0,dur,stagger,grow}) fuer Auffalten (Laden) und Umordnen (Auf-/Zuklappen, Einzelwerte), `ripple` bei Auswahl; die Zeichenschleife laeuft nur, solange etwas animiert.
+- `loadSeq`: verspaetete Antworten von /api/tree werden verworfen, wenn inzwischen ein anderer Datensatz gewaehlt wurde.
+- Erklaerungen der Datensaetze: `ABOUT` in tree.js (Knopf-Hinweis + Zeile unter den Knoepfen); Kopf-Hoehe erst nach `renderSets()` messen.

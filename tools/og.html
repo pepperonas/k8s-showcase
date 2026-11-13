@@ -3,7 +3,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <style>
 html,body{margin:0;background:#181522}
-#og{position:relative;width:1200px;height:630px;overflow:hidden;background:radial-gradient(circle at 300px 315px,#221d31 0,#181522 62%)}
+#og{position:relative;width:1200px;height:630px;overflow:hidden;background:#181522}
 canvas{position:absolute;left:0;top:0}
 .txt{position:absolute;left:640px;top:0;bottom:0;width:500px;display:flex;flex-direction:column;justify-content:center;color:#ece6d8;font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
 h1{margin:0;font-size:76px;line-height:1.02;font-weight:600;letter-spacing:-.5px}
@@ -16,6 +16,7 @@ p{margin:26px 0 0;font:400 26px/1.4 system-ui,-apple-system,"Segoe UI",sans-seri
   <div class="url">k8s.celox.io</div>
 </div>
 <script src="../k8s/web/hyper.js"></script>
+<script src="../k8s/web/orb.js"></script>
 <script>
 const H = Hyper, c = document.getElementById('c'), ctx = c.getContext('2d');
 ctx.scale(2, 2);
@@ -25,7 +26,8 @@ const root = mk([br(3, 2, true), br(2, 3, true), br(4, 1, false), br(3, 2, true)
 H.layout(root);
 const all = []; (function w(n) { all.push(n); n.children.forEach(k => { k.parent = n; w(k); }); })(root);
 const V = H.compose(H.rotate(-0.5), H.translate([-0.18, 0.08]));
-const cx = 310, cy = 315, S = 258;
+const cx = 310, cy = 315, S = 252;
+const col = { plane: '#181522', disk: '#0e1a2c', brass: '#c9a45c', 'brass-dim': '#7d6a45', ref: '#f0839a', ink: '#ece6d8' };
 const scr = z => [cx + S * z[0], cy + S * z[1]];
 function geo(a, b) {
   const A = scr(a), B = scr(b), g = H.geodesic(a, b);
@@ -35,27 +37,22 @@ function geo(a, b) {
   let d = a2 - a1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
   ctx.moveTo(A[0], A[1]); ctx.arc(C[0], C[1], r, a1, a2, d < 0);
 }
-ctx.beginPath(); ctx.arc(cx, cy, S, 0, 7); ctx.fillStyle = '#0e1a2c'; ctx.fill();
-ctx.strokeStyle = '#7d6a45'; ctx.globalAlpha = .28; ctx.lineWidth = 1;
-for (let d = 1; d <= 4; d++) { ctx.beginPath(); ctx.arc(cx, cy, S * Math.tanh(d / 2), 0, 7); ctx.stroke(); }
-ctx.globalAlpha = 1;
-ctx.beginPath(); ctx.arc(cx, cy, S + 2, 0, 7); ctx.strokeStyle = '#c9a45c'; ctx.lineWidth = 3; ctx.stroke();
-ctx.beginPath(); ctx.arc(cx, cy, S + 30, 0, 7); ctx.strokeStyle = '#7d6a45'; ctx.lineWidth = 1.2; ctx.stroke();
-ctx.beginPath();
-for (let i = 0; i < 72; i++) { const a = -0.5 + i * Math.PI / 36, l = i % 6 ? 7 : 16;
-  ctx.moveTo(cx + Math.cos(a) * (S + 8), cy + Math.sin(a) * (S + 8)); ctx.lineTo(cx + Math.cos(a) * (S + 8 + l), cy + Math.sin(a) * (S + 8 + l)); }
-ctx.strokeStyle = '#c9a45c'; ctx.lineWidth = 1.4; ctx.stroke();
+Orb.drawBackdrop(ctx, 1200, 630, cx, cy, S, -0.5, col);
+Orb.drawDisk(ctx, cx, cy, S, col);
 for (const n of all) { n.w = H.apply(V, n.pos); n.f = 1 - H.abs2(n.w); }
 ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, S, 0, 7); ctx.clip();
-ctx.lineCap = 'round'; ctx.strokeStyle = '#a88a4f';
-for (const n of all) if (n.parent) { ctx.beginPath(); geo(n.parent.w, n.w); ctx.lineWidth = Math.max(.6, 2.6 * (n.f + n.parent.f) / 2); ctx.stroke(); }
+Orb.drawGrid(ctx, H, V, scr, geo, S, col, 0.2);
+ctx.lineCap = 'round';
+for (const n of all) if (n.parent) { ctx.beginPath(); geo(n.parent.w, n.w); ctx.strokeStyle = '#a88a4f'; ctx.globalAlpha = 0.45 + 0.5 * Math.min(1, n.f + n.parent.f); ctx.lineWidth = Math.max(.6, 2.6 * (n.f + n.parent.f) / 2); ctx.stroke(); }
+ctx.globalAlpha = 1;
 const refs = [[all[5], all[30]], [all[18], all[3]], [all[40], all[12]], [all[25], all[45]]].filter(p => p[0] && p[1]);
-ctx.setLineDash([7, 6]); ctx.strokeStyle = '#f0839a'; ctx.lineWidth = 1.8; ctx.globalAlpha = .85;
-for (const [a, b] of refs) { ctx.beginPath(); geo(a.w, b.w); ctx.stroke(); }
-ctx.setLineDash([]); ctx.globalAlpha = 1;
+ctx.strokeStyle = '#f0839a'; ctx.lineWidth = 1.4;
+refs.forEach(([a, b], i) => { ctx.beginPath(); geo(a.w, b.w); ctx.globalAlpha = .4; ctx.stroke(); ctx.globalAlpha = 1; Orb.drawComet(ctx, H, scr, a.w, b.w, 0.35 + i * 0.15, '#f0839a', 4); });
 const base = { group: .068, list: .06, leaf: .038, leaf2: .038 }, fill = { group: '#8ab4f8', list: '#8fd3a8', leaf: '#e8c47c', leaf2: '#c6a0f6' };
 for (const n of [...all].sort((a, b) => a.f - b.f)) { const r = base[n.type] * S * n.f; if (r < .4) continue; const p = scr(n.w);
-  ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fillStyle = fill[n.type]; ctx.fill(); }
+  Orb.drawNode(ctx, p[0], p[1], r, fill[n.type], 'orb', { alpha: 0.5 + 0.5 * Math.min(1, n.f * 1.6), glow: n === root ? 0.9 : 0, dark: true }); }
+Orb.drawGlass(ctx, cx, cy, S, col);
 ctx.restore();
+Orb.drawRing(ctx, cx, cy, S, -0.5, col, 26);
 document.title = 'ready';
 </script></body></html>

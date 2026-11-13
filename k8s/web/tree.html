@@ -74,7 +74,8 @@ pre{margin:8px 0;padding:10px;max-height:170px;overflow:auto;background:color-mi
 #hintOpen{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));width:44px;height:44px;padding:0;font-weight:700}
 #hint button{float:right;background:none;border:0;color:var(--ink-mut);font-size:1.1rem;line-height:1;padding:2px 4px}
 body.has-sel #hint{display:none}
-#stats{position:fixed;left:16px;top:max(54px,calc(env(safe-area-inset-top) + 40px));font-size:.8rem;color:var(--ink-mut);pointer-events:none}
+#about{flex-basis:100%;margin:0;max-width:640px;font-size:.88rem;line-height:1.45;color:var(--ink);text-shadow:0 0 6px var(--plane),0 0 2px var(--plane)}
+#stats{display:block;color:var(--ink-mut);font-size:.82rem;margin-top:2px}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(560px,calc(100vw - 32px))}
 dialog::backdrop{background:rgba(10,8,16,.55)}
 dialog h2{margin:0 0 8px;font:600 1.15rem var(--serif)}
@@ -85,7 +86,7 @@ dialog .row button{border:1px solid var(--line);background:none;border-radius:99
 dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:var(--disk)}
 @media (min-width:1100px){
   /* oben links ist neben der runden Scheibe Platz, unten links nicht */
-  #hint{top:92px;bottom:auto;max-width:290px}
+  #hint{top:var(--head-bottom,92px);bottom:auto;max-width:290px}
 }
 @media (max-width:760px){
   #panel{top:auto;bottom:0;left:0;right:0;width:auto;max-height:42vh;border-radius:18px 18px 0 0;padding-bottom:max(14px,env(safe-area-inset-bottom))}
@@ -97,6 +98,7 @@ dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:v
   .sets{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none;padding-bottom:2px}
   .sets::-webkit-scrollbar{display:none}
   .chip{white-space:nowrap}
+  #about{font-size:.82rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   #stats{display:none}
 }
 </style></head><body>
@@ -108,8 +110,8 @@ dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:v
     <label title="Texte, Zahlen und Ja/Nein-Werte zeigen"><input type="checkbox" id="optValues" checked> Einzelwerte</label>
     <label><input type="checkbox" id="optRefs" checked> Verweise</label>
   </div>
+  <p id="about" aria-live="polite"><span id="about-text"></span><span id="stats"></span></p>
 </header>
-<div id="stats" aria-live="polite"></div>
 <aside id="panel" hidden aria-live="polite"></aside>
 <div class="ctl" role="group" aria-label="Ansicht">
   <button id="bZoomIn" title="Vergrößern (+)" aria-label="Vergrößern">+</button>
@@ -147,5 +149,6 @@ dialog .row button.pri{background:var(--brass);border-color:var(--brass);color:v
   </form>
 </dialog>
 <script src="hyper.js"></script>
+<script src="orb.js"></script>
 <script src="tree.js"></script>
 </body></html>

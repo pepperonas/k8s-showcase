@@ -10,6 +10,19 @@
   const ctx = canvas.getContext('2d');
 
   // ---------- Beispieldaten ----------
+  // Was jeder Datensatz zeigt, in Alltagssprache: tip = Hinweis am Knopf, about = Zeile unter den Knoepfen
+  const ABOUT = {
+    bestellung: { tip: 'Ein kleiner Online-Shop mit Kunden, Produkten und Bestellungen',
+      about: 'Ein kleiner Online-Shop: Kunden, Adressen, Produkte und drei Bestellungen. Jede Bestellung verweist auf ihren Kunden, ihre Lieferadresse und die Produkte, statt sie zu kopieren. Eine Lieferadresse fehlt absichtlich – dieser Verweis ist rot.' },
+    schema: { tip: 'Die Beschreibung einer Programmier-Schnittstelle (OpenAPI)',
+      about: 'So beschreiben Entwickler eine Schnittstelle, hier für eine Bibliothek (OpenAPI). Bausteine wie „Book“ und „Author“ stehen einmal unter components und werden überall per Verweis wiederverwendet – teils im Kreis: Ein Buch kann auf sein Folgebuch zeigen.' },
+    familie: { tip: 'Eine Familie über drei Generationen',
+      about: 'Eine Familie über drei Generationen, verzweigt nach Kindern. Die Verweise zeigen Beziehungen quer durch den Baum: Ehepartner, Patenonkel, Mentorin.' },
+    cluster: { tip: 'Die laufende Kubernetes-Vorführung, live abgefragt',
+      about: 'Die Kubernetes-Vorführung, so wie sie gerade läuft. Jede Kopie (Pod) zeigt auf ihre Gruppe (ReplicaSet), die Gruppe auf ihren Bauplan (Deployment), jeder Eingang (Service) auf die Kopien, an die er Anfragen verteilt. Lösch unter „Ausprobieren“ eine Kopie und lade hier neu.' },
+    eigenes: { tip: 'Eigene JSON-Daten einfügen und als Karte ansehen',
+      about: 'Deine eigenen Daten. Eine Stelle verweist auf eine andere mit {"$ref": "#/pfad/zum/ziel"}.' },
+  };
   const SETS = {
     bestellung: { label: 'Bestellungen', data: {
       customers: {
@@ -113,7 +126,7 @@
   let selected = null, hover = null;
   let showValues = true, showRefs = true;
   let W = 0, Hh = 0, dpr = 1, cx = 0, cy = 0, R = 1;
-  let anim = null, inertia = null;
+  let anim = null, inertia = null, morph = null, ripple = null;
   let colors = {};
   let currentSet = 'bestellung';
 
@@ -126,8 +139,20 @@
   }
 
   const visKids = (n) => n.collapsed ? [] : n.children.filter((c) => showValues || c.type === 'object' || c.type === 'array' || c.type === 'ref');
-  function relayout() {
+  function relayout(opts = {}) {
+    const old = new Map(visible.map((n) => [n, n.pos]));
     H.layout(model.root, { children: visKids });
+    if (reduced.matches) morph = null;
+    else if (opts.intro) {
+      for (const n of model.nodes) n.from = [0, 0];
+      morph = { t0: performance.now(), dur: 800, stagger: 95, grow: true };   // Baum faltet sich aus der Mitte auf
+    } else if (old.size) {
+      for (const n of model.nodes) {
+        let a = n; while (a && !old.has(a)) a = a.parent;      // Neues waechst aus dem naechsten bekannten Vorfahren
+        n.from = a ? old.get(a) : [0, 0];
+      }
+      morph = { t0: performance.now(), dur: 480, stagger: 0 };
+    }
     visible = [];
     const walk = (n) => { visible.push(n); visKids(n).forEach(walk); };
     walk(model.root);
@@ -140,16 +165,19 @@
   }
   const visibleAncestor = (n) => { while (n && !n.visible) n = n.parent; return n; };
 
+  let loadSeq = 0;   // jede Auswahl zaehlt hoch; verspaetete Antworten erkennen sich daran
   function loadData(json, setName) {
+    loadSeq++;
     model = buildModel(json);
     currentSet = setName;
     selected = null; hover = null; anim = null; inertia = null;
     V = H.identity(); zoom = 1; ox = 0; oy = 0; shift = null;
     document.body.classList.remove('has-sel');
-    resize();
-    relayout();
+    visible = [];
+    relayout({ intro: true });
     renderPanel();
     renderSets();
+    resize();          // erst jetzt: Knopfleiste und Erklaerung haben ihre Hoehe
   }
 
   // ---------- Darstellung ----------
@@ -167,6 +195,7 @@
     const narrow = W < 760;
     // Freien Raum aus dem echten Layout messen: unter dem Kopf, ueber Knopfreihe bzw. Panel
     const top = document.querySelector('header').getBoundingClientRect().bottom + 8;
+    document.documentElement.style.setProperty('--head-bottom', `${Math.round(top + 6)}px`);
     let bottom = Hh - 12, right = W;
     const pv = !panel.hidden && selected;
     if (narrow) {
@@ -246,7 +275,7 @@
     stepShift(now); stepAnim(now); stepInertia(dt);
     draw(now);
     const dashing = showRefs && !reduced.matches && (selected || hover) && activeRefs().length;
-    if (anim || inertia || shift || dashing) requestDraw();
+    if (anim || inertia || shift || morph || ripple || dashing) requestDraw();
   }
 
   function activeRefs() {
@@ -261,64 +290,62 @@
   function draw(now) {
     if (!model) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = colors.plane; ctx.fillRect(0, 0, W, Hh);
-    const s = S(), C0 = toScreen([0, 0]);
+    const s = S(), C0 = toScreen([0, 0]), rot = H.angleOf(V), dark = Orb.isDark(colors.plane);
+    Orb.drawBackdrop(ctx, W, Hh, C0[0], C0[1], s, rot, colors);
+    Orb.drawDisk(ctx, C0[0], C0[1], s, colors);
 
-    // Scheibe + hyperbolische Abstandskreise um das Zentrum
-    ctx.beginPath(); ctx.arc(C0[0], C0[1], s, 0, 2 * Math.PI); ctx.fillStyle = colors.disk; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = colors['brass-dim']; ctx.globalAlpha = 0.22;
-    for (let d = 1; d <= 5; d++) { ctx.beginPath(); ctx.arc(C0[0], C0[1], s * Math.tanh(d / 2), 0, 2 * Math.PI); ctx.stroke(); }
-    ctx.globalAlpha = 1;
-
-    // Messingring mit Teilung: zeigt die aktuelle Drehung
-    const rot = H.angleOf(V);
-    ctx.beginPath(); ctx.arc(C0[0], C0[1], s + 2, 0, 2 * Math.PI);
-    ctx.strokeStyle = colors.brass; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.arc(C0[0], C0[1], s + 24, 0, 2 * Math.PI);
-    ctx.strokeStyle = colors['brass-dim']; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath();
-    for (let i = 0; i < 72; i++) {
-      const a = rot + i * Math.PI / 36, len = i % 6 === 0 ? 14 : 6;
-      ctx.moveTo(C0[0] + Math.cos(a) * (s + 6), C0[1] + Math.sin(a) * (s + 6));
-      ctx.lineTo(C0[0] + Math.cos(a) * (s + 6 + len), C0[1] + Math.sin(a) * (s + 6 + len));
-    }
-    ctx.strokeStyle = colors.brass; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.beginPath(); ctx.arc(C0[0] + Math.cos(rot) * (s + 16), C0[1] + Math.sin(rot) * (s + 16), 4.5, 0, 2 * Math.PI);
-    ctx.fillStyle = colors.brass; ctx.fill();
-
-    // Lage aller sichtbaren Knoten
+    // Lage aller sichtbaren Knoten; waehrend eines Uebergangs gleiten sie auf Geodaeten
+    let morphing = false;
     for (const n of visible) {
-      n.w = H.apply(V, n.pos);
+      let p = n.pos;
+      n.grow = 1;
+      if (morph) {
+        const k = Math.min(1, Math.max(0, (now - morph.t0 - n.depth * morph.stagger) / morph.dur));
+        if (k < 1) morphing = true;
+        p = Orb.geoLerp(H, n.from || [0, 0], n.pos, ease(k));
+        if (morph.grow) n.grow = 1 - Math.pow(1 - k, 3);      // aus einem Punkt heranwachsen
+      }
+      n.w = H.apply(V, p);
       const f = 1 - H.abs2(n.w);
       n.f = f;
       [n.sx, n.sy] = toScreen(n.w);
-      n.rr = (nodeBase[n.type] || 0.03) * s * f;
+      n.rr = (nodeBase[n.type] || 0.03) * s * f * n.grow;
     }
+    if (morph && !morphing) morph = null;
 
     ctx.save();
     ctx.beginPath(); ctx.arc(C0[0], C0[1], s, 0, 2 * Math.PI); ctx.clip();
+    Orb.drawGrid(ctx, H, V, toScreen, geoPath, s, colors, dark ? 0.2 : 0.28);
 
     // Pfad des ausgewaehlten Knotens zur Wurzel
     const onPath = new Set();
     for (let p = selected; p; p = p.parent) onPath.add(p);
 
-    // Baumkanten als Geodaeten
+    // Baumkanten als Geodaeten; der Pfad zur Auswahl leuchtet
     ctx.lineCap = 'round';
-    for (const n of visible) {
-      const p = n.parent;
-      if (!p || (n.f < 0.01 && p.f < 0.01)) continue;
-      const hot = onPath.has(n);
-      ctx.beginPath(); geoPath(p.w, n.w);
-      ctx.strokeStyle = hot ? colors.brass : colors['brass-dim'];
-      ctx.globalAlpha = hot ? 1 : 0.35 + 0.55 * Math.min(1, (n.f + p.f));
-      ctx.lineWidth = Math.max(0.5, (hot ? 3 : 1.6) * Math.min(1, (n.f + p.f) / 1.2) * Math.min(1.8, Math.sqrt(zoom)));
-      ctx.stroke();
+    for (const pass of ['glow', 'line']) {
+      for (const n of visible) {
+        const p = n.parent;
+        if (!p || (n.f < 0.01 && p.f < 0.01)) continue;
+        const hot = onPath.has(n);
+        if (pass === 'glow' && !hot) continue;
+        const wdt = Math.max(0.5, (hot ? 3 : 1.6) * Math.min(1, (n.f + p.f) / 1.2) * Math.min(1.8, Math.sqrt(zoom)));
+        ctx.beginPath(); geoPath(p.w, n.w);
+        if (pass === 'glow') { ctx.strokeStyle = colors.brass; ctx.globalAlpha = 0.18; ctx.lineWidth = wdt * 4; }
+        else {
+          ctx.strokeStyle = hot ? Orb.mix(colors.brass, true, dark ? 0.25 : 0) : colors['brass-dim'];
+          ctx.globalAlpha = hot ? 1 : 0.35 + 0.55 * Math.min(1, (n.f + p.f));
+          ctx.lineWidth = wdt;
+        }
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
 
-    // Verweise
+    // Verweise: in Ruhe zart gestrichelt, aktiv als Bahn mit wandernden Lichtern
     if (showRefs) {
       const act = new Set(activeRefs());
+      const flow = !reduced.matches;
       for (const n of visible) {
         if (n.type !== 'ref' || !n.target) continue;
         const t = visibleAncestor(n.target);
@@ -327,41 +354,49 @@
         const hot = act.has(n);
         ctx.beginPath();
         const geo = geoPath(n.w, t.w);
-        ctx.setLineDash([6, 5]);
-        ctx.lineDashOffset = hot && !reduced.matches ? -now / 35 : 0;
+        if (hot && flow) { ctx.setLineDash([]); ctx.globalAlpha = 0.55; ctx.lineWidth = 1.6; }
+        else { ctx.setLineDash([6, 5]); ctx.lineDashOffset = 0; ctx.globalAlpha = hot ? 1 : (selected || hover ? 0.1 : 0.26); ctx.lineWidth = hot ? 2.2 : 1; }
         ctx.strokeStyle = colors.ref;
-        ctx.globalAlpha = hot ? 1 : (selected || hover ? 0.1 : 0.26);
-        ctx.lineWidth = hot ? 2.2 : 1;
         ctx.stroke(); ctx.setLineDash([]);
         const size = Math.max(hot ? 5 : 3, Math.min(hot ? 9 : 6, 9 * t.f * Math.sqrt(zoom)));
         ctx.beginPath(); arrowHead(geo, t.rr + 2, size); ctx.fillStyle = colors.ref; ctx.fill();
+        if (hot && flow) {
+          const sz = Math.max(2.5, 5 * Math.min(1, (n.f + t.f)));
+          for (let k = 0; k < 2; k++) Orb.drawComet(ctx, H, toScreen, n.w, t.w, ((now / 1700) + k / 2) % 1, colors.ref, sz);
+        }
       }
       ctx.globalAlpha = 1;
     }
 
-    // Knoten, kleine zuerst
+    // Knoten als beleuchtete Kugeln, kleine zuerst
     const order = visible.filter((n) => n.rr > 0.5).sort((a, b) => a.rr - b.rr);
     for (const n of order) {
       const col = n.type === 'ref' && !n.target ? colors.broken : colors['t-' + n.type];
-      ctx.globalAlpha = n === selected || n === hover || onPath.has(n) ? 1 : 0.45 + 0.55 * Math.min(1, n.f * 1.6);
-      ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr, 0, 2 * Math.PI);
-      if (n.type === 'object' || n.type === 'array') {
-        ctx.fillStyle = col; ctx.fill();
-        if (n.collapsed) { ctx.lineWidth = Math.max(1, n.rr * 0.18); ctx.strokeStyle = colors.disk; ctx.stroke(); }
-      } else if (n.type === 'ref') {
-        ctx.fillStyle = colors.disk; ctx.fill();
-        ctx.lineWidth = Math.max(1, n.rr * 0.28); ctx.strokeStyle = col; ctx.stroke();
-      } else {
-        ctx.fillStyle = col; ctx.fill();
+      const focus = n === selected || n === hover || onPath.has(n);
+      const glow = n === selected ? 1.3 : n === hover ? 0.9 : onPath.has(n) ? 0.5 : (n.type === 'object' || n.type === 'array') && n.rr > 6 ? 0.15 : 0;
+      Orb.drawNode(ctx, n.sx, n.sy, n.rr, col, n.type === 'ref' ? 'ring' : 'orb',
+        { alpha: focus ? 1 : 0.45 + 0.55 * Math.min(1, n.f * 1.6), glow, dark, fill: colors.disk });
+      if (n.collapsed && n.rr > 3) {
+        ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr + 3, 0, 2 * Math.PI);
+        ctx.setLineDash([2, 3]); ctx.lineWidth = 1.2; ctx.strokeStyle = col; ctx.stroke(); ctx.setLineDash([]);
       }
-      ctx.globalAlpha = 1;
       if (n === selected || n === hover) {
         ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr + 4, 0, 2 * Math.PI);
-        ctx.lineWidth = n === selected ? 2.5 : 1.5; ctx.strokeStyle = colors.ink; ctx.stroke();
+        ctx.lineWidth = n === selected ? 2 : 1.2; ctx.strokeStyle = colors.ink; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      if (ripple && ripple.node === n) {
+        const k = (now - ripple.t0) / 750;
+        if (k >= 1) ripple = null;
+        else {
+          ctx.beginPath(); ctx.arc(n.sx, n.sy, n.rr + 4 + ease(k) * 34, 0, 2 * Math.PI);
+          ctx.lineWidth = 2 * (1 - k); ctx.strokeStyle = colors.brass; ctx.globalAlpha = 1 - k; ctx.stroke(); ctx.globalAlpha = 1;
+        }
       }
     }
 
+    Orb.drawGlass(ctx, C0[0], C0[1], s, colors);
     ctx.restore();
+    Orb.drawRing(ctx, C0[0], C0[1], s, rot, colors, 24);
 
     // Beschriftungen: Wichtiges zuerst, jede bekommt die freie Seite (weg vom Elternknoten);
     // was sich mit schon Gesetztem ueberschneiden wuerde, entfaellt (ausser beim Ausgewaehlten).
@@ -375,7 +410,7 @@
     }
     const rank = (n) => (n === selected ? 4 : n === hover ? 3 : near.has(n) ? 2 : 0) * 1000 + n.rr;
     const minR = S() < 260 ? 3 : 5;   // Kollisionspruefung haelt es trotzdem ruhig
-    const cand = order.filter((n) => n.rr >= minR || (near.has(n) && n.rr > 1.5)).sort((a, b) => rank(b) - rank(a));
+    const cand = order.filter((n) => n.grow > 0.85 && (n.rr >= minR || (near.has(n) && n.rr > 1.5))).sort((a, b) => rank(b) - rank(a));
     const boxes = order.filter((n) => n.rr > 3).map((n) => ({ x: n.sx - n.rr, y: n.sy - n.rr, w: 2 * n.rr, h: 2 * n.rr, own: n }));
     const hits = (r, self) => boxes.some((b) => b.own !== self && r.x < b.x + b.w && r.x + r.w > b.x && r.y < b.y + b.h && r.y + r.h > b.y);
     const family = getComputedStyle(document.body).fontFamily;
@@ -652,7 +687,8 @@
   function select(n) {
     const had = !!selected;
     selected = n; renderPanel();
-    document.body.classList.toggle('has-sel', !!n);   // Hilfe weicht dem Panel
+    document.body.classList.toggle('has-sel', !!n);
+    if (n && !reduced.matches) ripple = { node: n, t0: performance.now() };   // Hilfe weicht dem Panel
     if (had !== !!n) shiftStage(); else requestDraw();
   }
   // Panel auf/zu: Scheibe gleitet an ihren neuen Platz statt zu springen
@@ -719,6 +755,7 @@
   }
   function renderStats() {
     const m = model;
+    $('#about-text').textContent = (ABOUT[currentSet] || ABOUT.eigenes).about;
     $('#stats').textContent = `${m.nodes.length} Einträge, ${m.refs} Verweise${m.broken ? `, ${m.broken} davon ins Leere` : ''}`;
   }
 
@@ -728,7 +765,7 @@
     const box = $('#sets');
     box.replaceChildren();
     const chip = (id, label, fn, dis) => {
-      const b = el('button', { class: 'chip', 'aria-pressed': String(currentSet === id), on: fn }, label);
+      const b = el('button', { class: 'chip', 'aria-pressed': String(currentSet === id), title: ABOUT[id] ? ABOUT[id].tip : '', on: fn }, label);
       if (dis) b.disabled = true;
       box.append(b);
     };
@@ -739,14 +776,17 @@
   }
   async function loadCluster() {
     clusterState = 'loading'; renderSets();
+    const mine = ++loadSeq;
     try {
       const r = await fetch('api/tree', { cache: 'no-store' });
+      if (mine !== loadSeq) { clusterState = 'idle'; renderSets(); return; }   // inzwischen anderes gewaehlt
       if (r.status === 429) { clusterState = 'busy'; renderSets(); return; }   // Schutzdrossel des Servers
       if (!r.ok) throw new Error(r.status);
       const data = await r.json();
       clusterState = 'idle';
+      if (mine !== loadSeq) { renderSets(); return; }
       loadData(data, 'cluster');
-    } catch (err) { clusterState = 'error'; renderSets(); }
+    } catch (err) { clusterState = 'error'; if (mine === loadSeq) renderSets(); }
   }
   const dlg = $('#dlg');
   function openDialog() {

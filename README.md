@@ -89,7 +89,17 @@ So bewegst du dich:
 
 Wenn ein Punkt in die Mitte fährt, dreht sich die Karte so, dass das, wo er herkommt, links liegt. Man liest also immer von links nach rechts tiefer hinein. Rechts (am Handy unten) steht, was in dem Eintrag drinsteht und wer auf ihn verweist; ein Klick auf einen Verweis fliegt direkt dorthin.
 
-Zum Ausprobieren gibt es Bestellungen, eine Schnittstellen-Beschreibung (mit Verweisen im Kreis), einen Stammbaum, **die laufende Kubernetes-Vorführung selbst** („Cluster (live)“: welche Kopie gehört zu welchem Programm) und ein Feld für eigenes JSON.
+Zum Ausprobieren gibt es fünf Datensätze; unter den Knöpfen steht jeweils, was man sieht:
+
+| Knopf | Was es ist | Worauf achten |
+|---|---|---|
+| **Bestellungen** | ein kleiner Online-Shop: Kunden, Adressen, Produkte, drei Bestellungen | Bestellungen verweisen auf Kunden und Produkte, statt sie zu kopieren; ein Verweis zeigt absichtlich ins Leere (rot) |
+| **API-Schema** | die Beschreibung einer Programmier-Schnittstelle für eine Bibliothek (OpenAPI) | Bausteine wie „Book“ werden einmal definiert und überall wiederverwendet, teils im Kreis |
+| **Stammbaum** | eine Familie über drei Generationen | Verweise quer durch den Baum: Ehepartner, Pate, Mentorin |
+| **Cluster (live)** | die laufende Kubernetes-Vorführung, frisch abgefragt | Pod → ReplicaSet → Deployment, Service → Pods |
+| **Eigene Daten** | beliebiges eigenes JSON | Verweise mit `{"$ref": "#/pfad"}` |
+
+**Darstellung:** Die Scheibe ist als Glaskugel in Messingfassung gerendert (Licht von oben links, Randvignette als Tiefe, Spiegelung), dahinter Sternenstaub. Ein hyperbolisches Gitter verzerrt sich beim Ziehen mit der Ebene. Knoten sind beleuchtete Kugeln, der Pfad zur Auswahl leuchtet, über aktive Verweise wandern Lichter – in hyperbolisch gleichmäßigem Tempo, also zum Rand hin scheinbar langsamer. Beim Laden faltet sich der Baum aus der Mitte auf, beim Auf- und Zuklappen gleiten Zweige auf Geodäten, eine Auswahl sendet eine Welle aus. Bei „Bewegung reduzieren“ entfallen alle Animationen. Gemessen: 119–121 Bilder pro Sekunde bei Kamerafahrten.
 
 ## Kann das den Server lahmlegen?
 
@@ -157,7 +167,8 @@ k8s/manifests.yaml  Namespace, Deployments, Services, Rechte
 k8s/api.py          API (nur Python-Standardbibliothek)
 k8s/nginx.conf      nginx im Cluster: Seiten + Weiterleitung auf /api/
 k8s/web/            Seiten: index.html + landing.js (Start), cluster.html + app.js (Ausprobieren),
-                    tree.html + tree.js (Astrolabium), hyper.js (Geometrie), site.css (gemeinsame Gestalt),
+                    tree.html + tree.js (Astrolabium), hyper.js (Geometrie), orb.js (Darstellung der Scheibe),
+                    site.css (gemeinsame Gestalt),
                     favicon.svg/-32.png, apple-touch-icon.png, og.jpg (Vorschaubild für soziale Netzwerke)
 tools/              Vorlagen, aus denen Vorschaubild und Favicon-PNGs gerendert werden
 tests/              Geometrie-Tests (node --test)
